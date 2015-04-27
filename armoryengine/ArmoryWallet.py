@@ -1,10 +1,16 @@
-from ArmoryUtils import *
-from ArmoryEncryption import *
-from WalletEntry import *
-from ArmoryKeyPair import *
-from Timer import *
-from ErrorCorrection import *
-from ArbitraryWalletData import *
+import os
+import shutil
+import threading
+
+from armoryengine.ArmoryUtils import *
+from armoryengine.BinaryUnpacker import *
+
+from armoryengine.ArbitraryWalletData import Infinimap
+from armoryengine.ArmoryEncryption import EncryptionKey, MultiPwdEncryptionKey, KdfObject, ArmoryCryptInfo, NULLKDF
+from armoryengine.ArmoryKeyPair import ABEK_BIP44Seed, ABEK_StdWallet, Armory135Root, ArmoryImportedRoot, ArmorySeededKeyPair, ArmoryKeyPair
+from armoryengine.Decorators import VerifyArgTypes
+from armoryengine.ErrorCorrection import ERRCORR_BYTES, ERRCORR_PER_DATA
+from armoryengine.WalletEntry import WalletEntry
 
 DEFAULT_COMPUTE_TIME_TARGET  = 0.25
 DEFAULT_MAXMEM_LIMIT         = 32*MEGABYTE
@@ -1399,7 +1405,7 @@ class ArmoryWalletFile(object):
    #############################################################################
    @CheckFsyncArgument
    def updateTxLabel(self, txidType, txid, label, fsync=None):
-
+      pass
 
    #############################################################################
    @CheckFsyncArgument

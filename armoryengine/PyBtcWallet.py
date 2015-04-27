@@ -828,7 +828,7 @@ class PyBtcWallet(object):
          # The root key already has 256 bits of entropy which is excessive,
          # anyway.  And my original reason for having the chaincode random is 
          # no longer valid.
-         chaincode = DeriveChaincodeFromRootKey(plainRootKey)
+         chaincode = DeriveChaincodeFromRootKey_135(plainRootKey)
             
                              
 
@@ -2125,9 +2125,9 @@ class PyBtcWallet(object):
             pass
 
       ### Update the wallet version if necessary ###
-      if getVersionInt(self.version) < getVersionInt(ARMORY_WALLET_VERSION):
-         LOGERROR('Wallets older than version 1.35 no longer supported!')
-         return
+#      if getVersionInt(self.version) < getVersionInt(ARMORY_WALLET_VERSION):
+#         LOGERROR('Wallets older than version 1.35 no longer supported!')
+#         return
 
       return self
 

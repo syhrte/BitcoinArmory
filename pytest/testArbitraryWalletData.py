@@ -1,6 +1,6 @@
 ################################################################################
 #                                                                              #
-# Copyright (C) 2011-2014, Armory Technologies, Inc.                           #
+# Copyright (C) 2011-2015, Armory Technologies, Inc.                           #
 # Distributed under the GNU Affero General Public License (AGPL v3)            #
 # See LICENSE or http://www.gnu.org/licenses/agpl.html                         #
 #                                                                              #
@@ -8,18 +8,17 @@
 import sys
 sys.path.append('..')
 import unittest
+from pytest.Tiab import TiabTest
 import sys
 sys.path.append('..')
 import textwrap
 
-from armoryengine.ArmoryUtils import *
-from armoryengine.ArbitraryWalletData import *
-from armoryengine.ArmoryEncryption import *
-
+from armoryengine.ALL import *
+from armoryengine.ArbitraryWalletData import ArbitraryWalletData
 
 
 ################################################################################
-class InfinimapTests(unittest.TestCase):
+class InfinimapTests(TiabTest):
 
    #############################################################################
    def testInfinimap(self):
@@ -313,5 +312,5 @@ class InfinimapTests(unittest.TestCase):
 
 
 ################################################################################
-if __name__ == "__main__":
-   unittest.main()
+# if __name__ == "__main__":
+#    unittest.main()

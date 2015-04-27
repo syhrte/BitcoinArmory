@@ -1,6 +1,6 @@
 ################################################################################
 #
-# Copyright (C) 2011-2014, Armory Technologies, Inc.                         
+# Copyright (C) 2011-2015, Armory Technologies, Inc.                         
 # Distributed under the GNU Affero General Public License (AGPL v3)
 # See LICENSE or http://www.gnu.org/licenses/agpl.html
 #
@@ -38,7 +38,7 @@ def someStringOutputFunction(inputString):
 
 
 ################################################################################
-class VerifyArgTypeTest(unittest.TestCase):
+class VerifyArgTypeTest(TiabTest):
    """
    This is a ridiculous test.  The argument-aware decorator has plenty of
    nested functions on its own -- but now we have to make a ton more nested

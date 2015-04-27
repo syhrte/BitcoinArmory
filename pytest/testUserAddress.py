@@ -4,7 +4,7 @@ import unittest
 from pytest.Tiab import TiabTest
 
 from CppBlockUtils import SecureBinaryData, CryptoECDSA
-from armoryengine.ArmoryUtils import *
+from armoryengine.ALL import *
 from armoryengine.MultiSigUtils import calcLockboxID
 from armoryengine.Transaction import getTxOutScriptType
 from armoryengine.UserAddressUtils import getDisplayStringForScript, \

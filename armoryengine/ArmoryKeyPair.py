@@ -5,9 +5,13 @@
 # See LICENSE or http://www.gnu.org/licenses/agpl.html                         #
 #                                                                              #
 ################################################################################
-from ArmoryUtils import *
-from ArmoryEncryption import *
-from WalletEntry import *
+from armoryengine.ArmoryUtils import *
+from armoryengine.BinaryUnpacker import *
+
+from armoryengine.ArmoryEncryption import ArmoryCryptInfo, CRYPT_IV_SRC, EkeyMustBeUnlocked, NULLCRYPTINFO, NULLSBD
+from armoryengine.WalletEntry import WalletEntry
+from armoryengine.Decorators import VerifyArgTypes
+
 HARDBIT = 0x80000000
 
 
@@ -332,9 +336,9 @@ class ArmoryKeyPair(WalletEntry):
       return self.uniqueIDBin
 
    #############################################################################
-   def getUniqueIDB58(self, forceRecompute=False):
+   def getUniqueIDB58(self, forceRecompute=False, addrbyte=ADDRBYTE):
       if self.uniqueIDB58 is None or forceRecompute:
-         self.recomputeUniqueIDB58()
+         self.recomputeUniqueIDB58(addrbyte=addrbyte)
       return self.uniqueIDB58
 
    #############################################################################
@@ -1552,14 +1556,21 @@ class Armory135KeyPair(ArmoryKeyPair):
       self.rawScript = hash160_to_p2pkhash_script(pkHash160)
 
    #############################################################################
-   def recomputeUniqueIDBin(self):
+   def recomputeUniqueIDBin(self, addrbyte=ADDRBYTE):
       if self.sbdPublicKey33.getSize() == 0:
          self.uniqueIDBin = None
       else:
          childAKP = self.spawnChild(0, privSpawnReqd=False, fsync=False, forIDCompute=True)
          child160 = hash160(childAKP.getSerializedPubKey())
-         self.uniqueIDBin = (ADDRBYTE + child160[:5])[::-1]
+         self.uniqueIDBin = (addrbyte + child160[:5])[::-1]
 
+   #############################################################################
+   def recomputeUniqueIDB58(self, addrbyte=ADDRBYTE):
+      self.recomputeUniqueIDBin(addrbyte=addrbyte)
+      if self.uniqueIDBin is None:
+         self.uniqueIDB58 = None
+      else:
+         self.uniqueIDB58 = binary_to_base58(self.uniqueIDBin)
 
    #############################################################################
    def fillKeyPool(self, *args, **kwargs):

@@ -16,8 +16,9 @@ import sys
 sys.path.append('..')
 import unittest
 import textwrap
+from pytest.Tiab import TiabTest
 
-from armoryengine.ArmoryUtils import *
+from armoryengine.ALL import *
 from armoryengine.ErrorCorrection import *
 
 def skipFlagExists():
@@ -33,7 +34,7 @@ def skipFlagExists():
 
 
 #############################################################################
-class ChecksumTests(unittest.TestCase):
+class ChecksumTests(TiabTest):
 
    def setUp(self):
       self.CHKSZ = 4
@@ -162,13 +163,13 @@ class ChecksumTests(unittest.TestCase):
 
 
 #############################################################################
-class RsecTests(unittest.TestCase):
+class RsecTests(TiabTest):
    pass
 
 
 
-if __name__ == "__main__":
-   unittest.main()
+#if __name__ == "__main__":
+#   unittest.main()
 
 
 

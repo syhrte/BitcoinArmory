@@ -1,6 +1,5 @@
-from ArmoryUtils import *
-from BinaryPacker import *
-from BinaryUnpacker import *
+from armoryengine.ArmoryUtils import *
+from armoryengine.BinaryUnpacker import *
 
 
 # Wallets will have to be regenerated if this is changed
@@ -101,7 +100,3 @@ def verifyChecksumBytes(data, chksum, ecBytes=ERRCORR_BYTES,
       return output, False, errInChk
    else:
       return output, False, True
-      
-   
-
-

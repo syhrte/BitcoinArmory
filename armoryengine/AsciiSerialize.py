@@ -6,8 +6,7 @@
 #                                                                              #
 ################################################################################
 
-from ArmoryUtils import makeAsciiBlock, readAsciiBlock
-from armoryengine.ArmoryUtils import LOGERROR, UnserializeError
+from armoryengine.ArmoryUtils import makeAsciiBlock, readAsciiBlock, LOGERROR, UnserializeError
 
 class AsciiSerializable(object):
    """

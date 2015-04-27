@@ -390,7 +390,7 @@ class PyBtcAddress(object):
          raise ChecksumError, "Checksum doesn't match plaintext priv key!"
       if publicKey65:
          self.binPublicKey65 = SecureBinaryData(publicKey65)
-         if not self.binPublicKey65.getHash160()==self.addrStr20:
+         if not self.binPublicKey65.getHash160().toBinStr()==self.addrStr20:
             raise KeyDataError, "Public key does not match supplied address"
          if not skipCheck:
             if not CryptoECDSA().CheckPubPrivKeyMatch(self.binPrivKey32_Plain,\
@@ -408,7 +408,7 @@ class PyBtcAddress(object):
 
       assert(publicKey65.getSize()==65)
       self.__init__()
-      self.addrStr20 = publicKey65.getHash160()
+      self.addrStr20 = publicKey65.getHash160().toBinStr()
       self.binPublicKey65 = publicKey65
       self.isInitialized = True
       self.isLocked = False
@@ -477,7 +477,7 @@ class PyBtcAddress(object):
    def safeExtendPublicKey(self, pubKey, chn):
       # We do this computation twice, in case one is somehow corrupted
       # (Must be ultra paranoid with computing keys)
-      a160hex = binary_to_hex(pubKey.getHash160())
+      a160hex = binary_to_hex(pubKey.getHash160().toBinStr())
       logMult1 = SecureBinaryData()
       logMult2 = SecureBinaryData()
       newPub1 = CryptoECDSA().ComputeChainedPublicKey(pubKey, chn, logMult1)
@@ -809,11 +809,11 @@ class PyBtcAddress(object):
                                     self.chaincode)
 
          newPub  = CryptoECDSA().ComputePublicKey(newPriv)
-         newAddr160 = newPub.getHash160()
+         newAddr160 = newPub.getHash160().toBinStr()
          newAddr.createFromPlainKeyData(newPriv, newAddr160, \
                                        IV16=newIV, publicKey65=newPub)
 
-         newAddr.addrStr20 = newPub.getHash160()
+         newAddr.addrStr20 = newPub.getHash160().toBinStr()
          newAddr.useEncryption = self.useEncryption
          newAddr.isInitialized = True
          newAddr.chaincode     = self.chaincode
@@ -836,7 +836,7 @@ class PyBtcAddress(object):
          newAddr.binPublicKey65 = self.safeExtendPublicKey( \
                                     self.binPublicKey65, self.chaincode)
 
-         newAddr.addrStr20 = newAddr.binPublicKey65.getHash160()
+         newAddr.addrStr20 = newAddr.binPublicKey65.getHash160().toBinStr()
          newAddr.useEncryption = self.useEncryption
          newAddr.isInitialized = True
          newAddr.chaincode  = self.chaincode
@@ -1131,7 +1131,7 @@ class PyBtcAddress(object):
                                              self.binPrivKey32_Plain, \
                                              self.binPublicKey65))
 
-      self.addrStr20 = self.binPublicKey65.getHash160()
+      self.addrStr20 = self.binPublicKey65.getHash160().toBinStr()
 
       self.isInitialized = True
       return self
@@ -1210,7 +1210,7 @@ class PyBtcAddress(object):
       """
       if not self.hasPubKey():
          raise KeyDataError, 'Cannot compute address without PublicKey'
-      keyHash = self.binPublicKey65.getHash160()
+      keyHash = self.binPublicKey65.getHash160().toBinStr()
       chksum  = hash256(netbyte + keyHash)[:4]
       return  binary_to_base58(netbyte + keyHash + chksum)
 

@@ -5,10 +5,11 @@
 # See LICENSE or http://www.gnu.org/licenses/agpl.html                         #
 #                                                                              #
 ################################################################################
-from ArmoryUtils import *
 import os
 from jasvet import readSigBlock
 from copy import deepcopy
+
+from armoryengine.ArmoryUtils import *
 
 
 ################################################################################

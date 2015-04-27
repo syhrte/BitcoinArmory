@@ -9950,7 +9950,7 @@ TEST_F(BlockUtilsSuper, RepaidMissingTxio)
    }
 
    //delete the keys
-   auto& delKeysThread = [&ssh, this](void)->void
+   auto delKeysThread = [&ssh, this](void)->void
    { 
       LMDBEnv::Transaction tx(iface_->dbEnv_[BLKDATA].get(), LMDB::ReadWrite);
 
@@ -11349,6 +11349,94 @@ protected:
    string           seedString2_D5;
 };
 
+// Child Derivation process testing
+///////////////////////////////////////////////////////////////////////////////
+TEST_F(TestHDWalletCrypto, ChildDerivationTest)
+{
+   SecureBinaryData tmp1;
+   SecureBinaryData tmp2;
+   SecureBinaryData tmp3 = HDWalletCrypto().HMAC_SHA512(tmp1, tmp2);
+
+   EXPECT_EQ(tmp3.toHexStr(), "b936cee86c9f87aa5d3c6f2e84cb5a4239a5fe50480a6ec66b70ab5b1f4ac6730c6c515421b327ec1d69402e53dfb49ad7381eb067b338fd7b0cb22247225d47");
+
+   SecureBinaryData binaryN = WRITE_UINT32_BE(1);
+   EXPECT_EQ(binaryN.toHexStr(), "00000001");
+
+   ExtendedKey parKey(seedKey1, seedCC1);
+
+   SecureBinaryData chain = parKey.getChaincode();
+   EXPECT_EQ(chain.toHexStr(), "873dff81c02f525623fd1fe5167eac3a55a049de3d314bb42ee227ffed37d508");
+
+   SecureBinaryData cp = parKey.getPublicKey();
+   EXPECT_EQ(cp.toHexStr(), "0339a36013301597daef41fbe593a02cc513d0b55527ec2df1050e2e8ff49c85c2");
+
+   SecureBinaryData cp2 = parKey.getKey();
+   EXPECT_EQ(cp2.toHexStr(), "00e8f32e723decf4051aefac8e2c93c9c5b214313817cdb01a1494b917c8436b35");
+
+   SecureBinaryData hashData;
+   hashData.append(cp);
+   hashData.append(binaryN);
+   EXPECT_EQ(hashData.toHexStr(), "0339a36013301597daef41fbe593a02cc513d0b55527ec2df1050e2e8ff49c85c200000001");
+
+   SecureBinaryData hmac = HDWalletCrypto().HMAC_SHA512(chain, hashData);
+   EXPECT_EQ(hmac.toHexStr(), "6505fd0f948587ff19ecb8d9b3892125897eb445e28e0ba23086a888daeb00aa8dd96414ff4d5b4750be3af7fecce207173f86d6b5f58f9366297180de8e109b");
+
+   EXPECT_EQ(hmac.getSliceRef( 0,32).toHexStr(), "6505fd0f948587ff19ecb8d9b3892125897eb445e28e0ba23086a888daeb00aa");
+   EXPECT_EQ(hmac.getSliceRef(32,32).toHexStr(), "8dd96414ff4d5b4750be3af7fecce207173f86d6b5f58f9366297180de8e109b");
+
+   CryptoPP::Integer intLeft;
+   CryptoPP::Integer ecOrder;
+   SecureBinaryData ecOrder_BE = SecureBinaryData().CreateFromHex("fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141");
+   SecureBinaryData ecGenX = SecureBinaryData().CreateFromHex("79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798");
+   SecureBinaryData ecGenY = SecureBinaryData().CreateFromHex("483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8");
+
+   SecureBinaryData leftHMAC = hmac.getSliceRef(32,32);
+
+   ecOrder.Decode(ecOrder_BE.getPtr(), ecOrder_BE.getSize(), UNSIGNED);
+   intLeft.Decode(leftHMAC.getPtr(), leftHMAC.getSize(), UNSIGNED);
+
+   SecureBinaryData childKey;
+   SecureBinaryData parKey65 = CryptoECDSA().UncompressPoint(cp);
+   EXPECT_EQ(parKey65.toHexStr(), "0439a36013301597daef41fbe593a02cc513d0b55527ec2df1050e2e8ff49c85c23cbe7ded0e7ce6a594896b8f62888fdbc5c8821305e2ea42bf01e37300116281");
+
+   CryptoPP::Integer multInt;
+   multInt.Decode(leftHMAC.getPtr(), leftHMAC.getSize(), UNSIGNED);
+   CryptoPP::Integer expectedInt = CryptoPP::Integer("64160208204017539576776402857932106651643417239284695591857548942086538924187");
+   EXPECT_EQ(multInt, expectedInt);
+
+   SecureBinaryData A = leftHMAC.copy();
+   SecureBinaryData Bx = ecGenX.copy();
+   SecureBinaryData By = ecGenY.copy();
+   SecureBinaryData multResult;
+
+   CryptoPP::ECP ecp = CryptoECDSA().Get_secp256k1_ECP();
+   CryptoPP::Integer intA, intBx, intBy, intCx, intCy;
+   bool validResult = true;
+   intA.Decode( A.getPtr(),  A.getSize(),  UNSIGNED);
+
+   CryptoPP::Integer expectedInt2 = CryptoPP::Integer("64160208204017539576776402857932106651643417239284695591857548942086538924187");
+   EXPECT_EQ(intA, expectedInt2);
+
+   // Math is taken from ANSI X9.62 (Sect. D.3.2/1998 or I.3.1/2005).
+   multResult.clear();
+   multResult = BinaryData(64);
+   intBx.Decode(Bx.getPtr(), Bx.getSize(), UNSIGNED);
+   intBy.Decode(By.getPtr(), By.getSize(), UNSIGNED);
+
+   CryptoPP::Integer expectedInt3 = CryptoPP::Integer("55066263022277343669578718895168534326250603453777594175500187360389116729240");
+   EXPECT_EQ(intBx, expectedInt3);
+   CryptoPP::Integer expectedInt4 = CryptoPP::Integer("32670510020758816978083085130507043184471273380659243275938904335757337482424");
+   EXPECT_EQ(intBy, expectedInt4);
+
+   BTC_ECPOINT B(intBx, intBy);
+   BTC_ECPOINT C = ecp.ScalarMultiply(B, intA);
+   C.x.Encode(multResult.getPtr(),    32, UNSIGNED);
+   C.y.Encode(multResult.getPtr()+32, 32, UNSIGNED);
+
+   EXPECT_EQ(multResult.toHexStr(), "ac0590d245014c747343ce7b47a77e6a4e1eedb01c6887502014be960f3d2253eceadb33c492f318d43ccbd2be24bb3eef40e81f133306be1dee075bbfd772a2");
+
+}
+
 // Generate all the data (except WIF and Base58 values) from the BIP32 test
 // vector suite, and confirm that it matches what we expect. Extended keys will
 // be public and private.
@@ -11706,13 +11794,13 @@ TEST_F(TestHDWalletCrypto, BIP32TestVectorSuite)
       EXPECT_TRUE(checkKey.isPub());
       EXPECT_FALSE(checkKey.isPrv());
       EXPECT_FALSE(checkKey.isMaster());
-      EXPECT_EQ(set1CompPubKey[sPub1], retKey1);
-      EXPECT_EQ(set1PubKey[sPub1], retPubKey1);
-      EXPECT_EQ(set1CC[sPub1], retChaincode1);
-      EXPECT_EQ(set1ID[sPub1], testID1);
-      EXPECT_EQ(set1FP[sPub1], testFP1);
-      EXPECT_EQ(set1ParFP[sPub1], testParFP1);
-      EXPECT_EQ(set1CompPubKey[sPub1], testCompPub1);
+      EXPECT_EQ(set1CompPubKey[sPub1].toHexStr(), retKey1.toHexStr());
+      EXPECT_EQ(set1PubKey[sPub1].toHexStr(), retPubKey1.toHexStr());
+      EXPECT_EQ(set1CC[sPub1].toHexStr(), retChaincode1.toHexStr());
+      EXPECT_EQ(set1ID[sPub1].toHexStr(), testID1.toHexStr());
+      EXPECT_EQ(set1FP[sPub1].toHexStr(), testFP1.toHexStr());
+      EXPECT_EQ(set1ParFP[sPub1].toHexStr(), testParFP1.toHexStr());
+      EXPECT_EQ(set1CompPubKey[sPub1].toHexStr(), testCompPub1.toHexStr());
       EXPECT_EQ(verPub, testVer1);
       EXPECT_EQ(set1Depth[sPub1], testDepth1);
       EXPECT_EQ(*itPub1, testChildNum1);
@@ -11804,13 +11892,13 @@ TEST_F(TestHDWalletCrypto, BIP32TestVectorSuite)
       EXPECT_TRUE(checkKey.isPub());
       EXPECT_FALSE(checkKey.isPrv());
       EXPECT_FALSE(checkKey.isMaster());
-      EXPECT_EQ(set2CompPubKey[sPub2], retKey2);
-      EXPECT_EQ(set2PubKey[sPub2], retPubKey2);
-      EXPECT_EQ(set2CC[sPub2], retChaincode2);
-      EXPECT_EQ(set2ID[sPub2], testID2);
-      EXPECT_EQ(set2FP[sPub2], testFP2);
-      EXPECT_EQ(set2ParFP[sPub2], testParFP2);
-      EXPECT_EQ(set2CompPubKey[sPub2], testCompPub2);
+      EXPECT_EQ(set2CompPubKey[sPub2].toHexStr(), retKey2.toHexStr());
+      EXPECT_EQ(set2PubKey[sPub2].toHexStr(), retPubKey2.toHexStr());
+      EXPECT_EQ(set2CC[sPub2].toHexStr(), retChaincode2.toHexStr());
+      EXPECT_EQ(set2ID[sPub2].toHexStr(), testID2.toHexStr());
+      EXPECT_EQ(set2FP[sPub2].toHexStr(), testFP2.toHexStr());
+      EXPECT_EQ(set2ParFP[sPub2].toHexStr(), testParFP2.toHexStr());
+      EXPECT_EQ(set2CompPubKey[sPub2].toHexStr(), testCompPub2.toHexStr());
       EXPECT_EQ(verPub, testVer2);
       EXPECT_EQ(set2Depth[sPub2], testDepth2);
       EXPECT_EQ(*itPub2, testChildNum2);

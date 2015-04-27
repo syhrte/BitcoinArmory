@@ -10,7 +10,6 @@ import os
 
 import CppBlockUtils as Cpp
 from armoryengine.ArmoryUtils import *
-from armoryengine.BinaryPacker import *
 from armoryengine.BinaryUnpacker import *
 
 from armoryengine.AsciiSerialize import AsciiSerializable

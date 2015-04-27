@@ -4,7 +4,7 @@ from pytest.Tiab import TiabTest
 import unittest
 
 from armoryengine.parseAnnounce import *
-from armoryengine.ArmoryUtils import *
+from armoryengine.ALL import *
 
 changelogTestText = """
 # This is a comment

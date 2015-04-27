@@ -268,7 +268,6 @@ for opt,val in CLI_OPTIONS.__dict__.iteritems():
 
 # Use CLI args to determine testnet or not
 USE_TESTNET = CLI_OPTIONS.testnet
-#USE_TESTNET = True
 
 # Set default port for inter-process communication
 if CLI_OPTIONS.interport < 0:
@@ -2980,7 +2979,7 @@ def convertKeyDataToAddress(privKey=None, pubKey=None):
 
    if isinstance(pubKey,str):
       pubKey = SecureBinaryData(pubKey)
-   return pubKey.getHash160()
+   return pubKey.getHash160().toBinStr()
 
 
 
@@ -3042,7 +3041,7 @@ def parseBip32KeyData(theStr, verifyPub=True):
    
 
 ################################################################################
-def parsePrivateKeyData(theStr):
+def parsePrivateKeyData(theStr, privkeybyte=PRIVKEYBYTE):
    """
    This handles most standard formats for private keys, including raw hex,
    sipa/wif format, xprv/tprv, and a few related serialization types
@@ -3052,11 +3051,13 @@ def parsePrivateKeyData(theStr):
    output is a string that can be displayed identifying the key type.
    """
 
+   is_testnet = privkeybyte == '\xef'
+
 
    # xprv/tprv keys are recognizable right away, do it immediately
    if len(theStr)>=4 and theStr[:4] in ['tprv','tpub','xprv','xpub']:
       bip32keymap = parseBip32KeyData(theStr)
-      if not bip32keymap['isTestnet'] == USE_TESTNET:
+      if bip32keymap['isTestnet'] != is_testnet:
          raise NetworkIDError('Key is for wrong network!')
       if bip32keymap['isPublic']:
          raise KeyDataError('Attempted to parse public key as a private key!')
@@ -3097,7 +3098,7 @@ def parsePrivateKeyData(theStr):
       raise BadAddressError('Unrecognized key data')
 
 
-   if len(binEntry)==37 and binEntry[0]==PRIVKEYBYTE:
+   if len(binEntry)==37 and binEntry[0]==privkeybyte:
       # Assume leading 0x80 byte, and 4 byte checksum
       keydata = binEntry[ :1+32 ]
       chk     = binEntry[  1+32:]
@@ -3106,7 +3107,7 @@ def parsePrivateKeyData(theStr):
          raise InvalidHashError('Private Key checksum failed!')
       binEntry = binEntry[1:]
       keyType = 'Standard %s key with checksum' % keyType
-   elif len(binEntry)==38 and [binEntry[0],binEntry[-5]] ==[PRIVKEYBYTE,'\x01']:
+   elif len(binEntry)==38 and [binEntry[0],binEntry[-5]] ==[privkeybyte,'\x01']:
       # Assume leading 0x80 byte, and 4 byte checksum
       keydata = binEntry[ :1+33 ]
       chk     = binEntry[  1+33:]

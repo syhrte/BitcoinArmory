@@ -1,6 +1,6 @@
 ################################################################################
 #                                                                              #
-# Copyright (C) 2011-2014, Armory Technologies, Inc.                           #
+# Copyright (C) 2011-2015, Armory Technologies, Inc.                           #
 # Distributed under the GNU Affero General Public License (AGPL v3)            #
 # See LICENSE or http://www.gnu.org/licenses/agpl.html                         #
 #                                                                              #
@@ -9,9 +9,8 @@
 import sys
 sys.path.append('..')
 import unittest
-import sys
-sys.path.append('..')
 import textwrap
+from pytest.Tiab import TiabTest
 
 sys.argv.append('--debug')
 sys.argv.append('--testnet')
@@ -170,7 +169,7 @@ def writeReadWalletRoundTripTest(tself, wlt):
 
 
 ################################################################################
-class ArmoryFileHeaderTests(unittest.TestCase):
+class ArmoryFileHeaderTests(TiabTest):
 
    #############################################################################
    #############################################################################
@@ -285,7 +284,7 @@ class ArmoryFileHeaderTests(unittest.TestCase):
       
 
 ################################################################################
-class SimpleWalletTests(unittest.TestCase):
+class SimpleWalletTests(TiabTest):
 
    #############################################################################
    def setUp(self):
@@ -448,7 +447,7 @@ class SimpleWalletTests(unittest.TestCase):
       self.assertFalse(newWallet.getOnlyEkey().isLocked())
 
 ################################################################################
-class SimpleWalletTests(unittest.TestCase):
+class SimpleWalletTests(TiabTest):
 
    #############################################################################
    def setUp(self):
@@ -498,6 +497,7 @@ class SimpleWalletTests(unittest.TestCase):
 
       pwd2 = SecureBinaryData('AWDPWD')
       awdACI,awdEkey = ArmoryWalletFile.generateNewSinglePwdMasterEKey(pwd2)
+      newWallet = self.newWallet
       newWallet.addCryptObjsToWallet(awdEkey)
       awdEkeyID = awdEkey.getEncryptionKeyID()
 
@@ -569,5 +569,5 @@ class SimpleWalletTests(unittest.TestCase):
 
 
 
-if __name__ == "__main__":
-   unittest.main()
+#if __name__ == "__main__":
+#   unittest.main()

@@ -374,7 +374,7 @@ class ArmoryDTiabTest(TiabTest):
       info = self.jsonServer.jsonrpc_getarmorydinfo()
       self.assertEqual(info['blocks'], TOP_TIAB_BLOCK)
       self.assertEqual(info['bdmstate'], BDM_BLOCKCHAIN_READY)
-      self.assertEqual(info['walletversionstr'], '1.35')
+      self.assertEqual(info['walletversionstr'], '2.00')
       self.assertEqual(info['difficulty'], 1.0)
       self.assertEqual(info['balance'], FIRST_WLT_BALANCE)
 

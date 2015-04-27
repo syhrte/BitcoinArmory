@@ -1,6 +1,6 @@
 ################################################################################
 #
-# Copyright (C) 2011-2014, Armory Technologies, Inc.                         
+# Copyright (C) 2011-2015, Armory Technologies, Inc.                         
 # Distributed under the GNU Affero General Public License (AGPL v3)
 # See LICENSE or http://www.gnu.org/licenses/agpl.html
 #
@@ -15,12 +15,10 @@
 import sys
 sys.path.append('..')
 import unittest
-import sys
-sys.path.append('..')
 import textwrap
+from pytest.Tiab import TiabTest
 
-from armoryengine.ArmoryUtils import *
-from armoryengine.ArmoryEncryption import *
+from armoryengine.ALL import *
 
 # Here's some variables that are recurring through the tests, that have been
 # extracted from code known to be working. 
@@ -63,7 +61,7 @@ def skipFlagExists():
 # uncomment the decorator and specify the email arguments
 # The email arguments should never be pushed to the repo
 # Run the test and check your email
-class ArmoryCryptInfoTest(unittest.TestCase):
+class ArmoryCryptInfoTest(TiabTest):
 
    def setUp(self):
       pass
@@ -324,7 +322,7 @@ class ArmoryCryptInfoTest(unittest.TestCase):
 
 ################################################################################
 ################################################################################
-class ArmoryKDFTests(unittest.TestCase):
+class ArmoryKDFTests(TiabTest):
 
    def setUp(self):
       pass
@@ -436,7 +434,7 @@ class ArmoryKDFTests(unittest.TestCase):
 
 ################################################################################
 ################################################################################
-class ArmoryEncryptKeyTests(unittest.TestCase):
+class ArmoryEncryptKeyTests(TiabTest):
 
    def setUp(self):
       # Use the KDF from KDF tests.  We already know its ID, pwd output, etc.
@@ -702,7 +700,7 @@ class ArmoryEncryptKeyTests(unittest.TestCase):
 
 ################################################################################
 ################################################################################
-class ArmoryMultiPwdKeyTests(unittest.TestCase):
+class ArmoryMultiPwdKeyTests(TiabTest):
 
    def setUp(self):
       # Setup for up to N=4, though our tests may use less
@@ -1222,7 +1220,7 @@ class ArmoryMultiPwdKeyTests(unittest.TestCase):
 
 ################################################################################
 ################################################################################
-class ArmoryChainedACITests(unittest.TestCase):
+class ArmoryChainedACITests(TiabTest):
 
    def setUp(self):
       # Use the KDF from KDF tests.  We already know its ID, pwd output, etc.
@@ -1443,13 +1441,5 @@ class ArmoryChainedACITests(unittest.TestCase):
 
 
 
-if __name__ == "__main__":
-   unittest.main()
-
-
-
-
-
-
-
-
+#if __name__ == "__main__":
+#   unittest.main()

@@ -6,10 +6,10 @@
 #                                                                              #
 ################################################################################
 
-from armoryengine.ArmoryUtils import *
-from armoryengine.ArmoryEncryption import *
-from armoryengine.ArmoryKeyPair import *
-from armoryengine.WalletEntry import *
+import sys
+sys.path.append('..')
+
+from armoryengine.ALL import *
 
 
 BIP32TestVectors = []

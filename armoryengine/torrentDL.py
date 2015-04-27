@@ -15,25 +15,27 @@ from ArmoryUtils import ARMORY_HOME_DIR, BTC_HOME_DIR, LOGEXCEPT, \
                         AllowAsync, RightNow, unixTimeToFormatStr, \
                         secondsToHumanTime, MAGIC_BYTES,\
                         bytesToHumanSize, secondsToHumanTime
-from BitTornado.download_bt1 import BT1Download, defaults, get_response
-from BitTornado.RawServer import RawServer, UPnP_ERROR
-from random import seed
-from socket import error as socketerror
-from BitTornado.bencode import bencode
-from BitTornado.natpunch import UPnP_test
-from threading import Event
-from os.path import abspath
-from sys import argv, stdout
-import sys
-import shutil
-from sha import sha
-from time import strftime, sleep
-import types
-from BitTornado.clock import clock
+
 from BitTornado import createPeerID, version
 from BitTornado.ConfigDir import ConfigDir
-from BitTornado.download_bt1 import defaults, download
 from BitTornado.ConfigDir import ConfigDir
+from BitTornado.RawServer import RawServer, UPnP_ERROR
+from BitTornado.bencode import bencode
+from BitTornado.clock import clock
+from BitTornado.download_bt1 import BT1Download, defaults, get_response
+from BitTornado.download_bt1 import defaults, download
+from BitTornado.natpunch import UPnP_test
+
+from os.path import abspath
+from random import seed
+from sha import sha
+from socket import error as socketerror
+from sys import argv, stdout
+from threading import Event
+from time import strftime, sleep
+import shutil
+import sys
+import types
 
 
 # Totally should've used a decorator for the custom funcs... 

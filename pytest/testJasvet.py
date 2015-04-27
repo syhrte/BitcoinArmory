@@ -1,12 +1,15 @@
 import sys
 from unittest.case import SkipTest
 sys.path.append('..')
+import unittest
+from pytest.Tiab import TiabTest
+
 from armoryengine.ALL import *
 from jasvet import *
-import unittest
 
 
-class JasvetTester(unittest.TestCase):
+
+class JasvetTester(TiabTest):
 
    def testRandomK(self):
       r = randomk()

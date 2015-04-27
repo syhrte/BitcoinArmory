@@ -10,14 +10,11 @@ import locale
 from random import shuffle
 import time
 import unittest
+from unittest.case import SkipTest
+from pytest.Tiab import TiabTest
 
-
-from armoryengine.ArmoryUtils import *
-from armoryengine.BinaryPacker import *
-from armoryengine.BinaryUnpacker import *
-import armoryengine.ArmoryUtils
+from armoryengine.ALL import *
 from armoryengine import ArmoryUtils
-
 
 #sys.argv.append('--nologging')
 
@@ -830,14 +827,13 @@ class ParsePrivKeyTests(unittest.TestCase):
       # Will return 32-byte binary of "privHex" var above
       privHex33  = privHex + '01'
       privBin33  = hex_to_binary(privHex33)
-      privWIF    = 'L5BmPijJjrKbiUfG4zbiFKNqkvuJ8usooJmzuD7Z8dkRoTThYnAT'
       privWIFHex = binary_to_hex(base58_to_binary(privWIF))
       privXprv58 = xprvB58
 
-      self.assertEqual(parsePrivateKeyData(privHex33)[0],  privBin33)
-      self.assertEqual(parsePrivateKeyData(privWIF)[0],    privBin33)
-      self.assertEqual(parsePrivateKeyData(privWIFHex)[0], privBin33)
-      self.assertEqual(parsePrivateKeyData(privXprv58)[0], privBin33)
+      self.assertEqual(parsePrivateKeyData(privHex33, privkeybyte='\x80')[0],  privBin33)
+      self.assertEqual(parsePrivateKeyData(privWIF, privkeybyte='\x80')[0],    privBin33)
+      self.assertEqual(parsePrivateKeyData(privWIFHex, privkeybyte='\x80')[0], privBin33)
+      self.assertEqual(parsePrivateKeyData(privXprv58, privkeybyte='\x80')[0], privBin33)
       
       # This is from the wiki page on mini private keys used in Casascius coins
       miniStr  = 'S6c56bnXQiBjk9mqSYE7ykVQ7NzrRy'
@@ -847,9 +843,12 @@ class ParsePrivKeyTests(unittest.TestCase):
 
       miniBin = hex_to_binary(miniPriv)
 
-      self.assertEqual(parsePrivateKeyData(miniStr)[0],   miniBin)
-      self.assertEqual(parsePrivateKeyData(miniPriv)[0],  miniBin)
-      self.assertEqual(parsePrivateKeyData(miniWIF)[0],   miniBin)
+      self.assertEqual(parsePrivateKeyData(miniStr, privkeybyte='\x80')[0],   miniBin)
+      self.assertEqual(parsePrivateKeyData(miniPriv, privkeybyte='\x80')[0],  miniBin)
+      self.assertEqual(parsePrivateKeyData(miniWIF, privkeybyte='\x80')[0],   miniBin)
+
+      self.assertEqual(len(parsePrivateKeyData('5HpHagT65TZzG1PH3CSu63k8DbpvD8s5ip4nEB3kEsreAnchuDf', privkeybyte='\x80')[0]), 32)
+
 
 
 
@@ -857,6 +856,7 @@ class ParsePrivKeyTests(unittest.TestCase):
 class LeadingBitTests(unittest.TestCase):
 
    #############################################################################
+   @SkipTest
    def testGetLeadingBits(self):
       raise NotImplementedError('These tests are not finished!')
       b2b = lambda b:  BitSet.CreateFromBitString(b).toBinaryString()

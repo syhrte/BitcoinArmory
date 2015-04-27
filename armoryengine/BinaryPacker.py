@@ -15,7 +15,7 @@
 from armoryengine.ArmoryUtils import LITTLEENDIAN, int_to_binary, packVarInt, \
                                       toUnicode, toBytes, lenBytes, BitSet
 UINT8, UINT16, UINT32, UINT64, INT8, INT16, INT32, INT64,  \
-         VAR_INT, VAR_STR, VAR_UNICODE, FLOAT, BINARY_CHUNK, BITSET = range(14)
+   VAR_INT, VAR_STR, VAR_UNICODE, FLOAT, BINARY_CHUNK, BITSET = range(14)
 from struct import pack, unpack
 
 class PackerError(Exception): pass

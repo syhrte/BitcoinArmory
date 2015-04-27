@@ -30,7 +30,7 @@ def makeBinaryUnpacker(toUnpack):
 ################################################################################
 ################################################################################
 from struct import pack, unpack
-from BinaryPacker import *
+from armoryengine.BinaryPacker import *
 from armoryengine.ArmoryUtils import LITTLEENDIAN, unpackVarInt, LOGERROR, \
                                                 toUnicode, toBytes, lenBytes
 

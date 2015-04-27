@@ -6,11 +6,11 @@
 #                                                                              #
 ################################################################################
 
-from ArmoryUtils import *
-from ArmoryEncryption import *
-from WalletEntry import *
-from ArmoryKeyPair import *
-from Timer import *
+from armoryengine.ArmoryUtils import *
+from armoryengine.ArmoryEncryption import *
+from armoryengine.WalletEntry import *
+from armoryengine.ArmoryKeyPair import *
+from armoryengine.Timer import *
 
 ################################################################################
 class ScrAddrLabel(WalletEntry):

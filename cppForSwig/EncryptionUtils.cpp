@@ -28,9 +28,9 @@
 
 // Generator and curve order taken from SEC 2, Sect. 2.7.1. Data is big endian.
 const SecureBinaryData ecGenX_BE = SecureBinaryData().CreateFromHex(
-            "79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798");
+            "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798");
 const SecureBinaryData ecGenY_BE = SecureBinaryData().CreateFromHex(
-            "483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8");
+            "483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8");
 const SecureBinaryData ecOrder_BE = SecureBinaryData().CreateFromHex(
             "fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141");
 

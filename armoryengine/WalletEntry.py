@@ -1,5 +1,7 @@
-from ArmoryUtils import *
-import ErrorCorrection
+from armoryengine.ArmoryUtils import *
+from armoryengine.BinaryUnpacker import *
+
+from armoryengine.ErrorCorrection import ERRCORR_BYTES, ERRCORR_PER_DATA, createChecksumBytes, createRSECCode, verifyChecksumBytes, verifyRSECCode
 
 class WalletEntryMeta(type):
    # we use __init__ rather than __new__ here because we want
@@ -91,8 +93,8 @@ class WalletEntry(object):
    """
    __metaclass__ = WalletEntryMeta
 
-   ERRCORR_FUNCS = {'Create': ErrorCorrection.createChecksumBytes,
-                    'Verify': ErrorCorrection.verifyChecksumBytes}
+   ERRCORR_FUNCS = {'Create': createChecksumBytes,
+                    'Verify': verifyChecksumBytes}
 
 
    #############################################################################
@@ -117,8 +119,8 @@ class WalletEntry(object):
    #############################################################################
    @staticmethod
    def UseReedSolomonErrorCorrection():
-      WalletEntry.ChangeErrorCorrectAlgos(ErrorCorrection.createRSECCode,
-                                          ErrorCorrection.verifyRSECCode)
+      WalletEntry.ChangeErrorCorrectAlgos(createRSECCode,
+                                          verifyRSECCode)
 
    #############################################################################
    @staticmethod
@@ -136,8 +138,8 @@ class WalletEntry(object):
       def checkfn(data, parity):
          return data, False, False
          
-      def createfn(data, rsecBytes=ErrorCorrection.ERRCORR_BYTES, 
-                         perDataBytes=ErrorCorrection.ERRCORR_PER_DATA):
+      def createfn(data, rsecBytes=ERRCORR_BYTES, 
+                         perDataBytes=ERRCORR_PER_DATA):
          nChunk = (len(data)-1)/perDataBytes + 1
          return '\x00' * rsecBytes * nChunk
 
@@ -529,15 +531,5 @@ class WalletEntry(object):
    #############################################################################
    def getPPrintPairs(self):
       return []
-
-
-
-
-from ArmoryEncryption import *
-try:
-   from ArmoryKeyPair import *
-except:
-   LOGERROR('Could not import ArmoryKeyPair module')
-
 
 

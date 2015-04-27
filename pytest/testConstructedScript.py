@@ -2,12 +2,10 @@
 import sys
 sys.path.append('..')
 import unittest
+from pytest.Tiab import TiabTest
 
 from CppBlockUtils import HDWalletCrypto
-from armoryengine.ArmoryUtils import *
-from armoryengine.BinaryPacker import *
-from armoryengine.BinaryUnpacker import *
-from armoryengine.ConstructedScript import *
+from armoryengine.ALL import *
 
 ############# Various constants we wish to use throughout the tests.
 # Master key derived from the 2nd BIP32 test vector + child key 0.
@@ -94,7 +92,7 @@ PR2_v0 = hex_to_binary( # WRONG?
 
 
 ################################################################################
-class PKSClassTests(unittest.TestCase):
+class PKSClassTests(TiabTest):
    # Use serialize/unserialize to confirm that the data struct is correctly
    # formed and can be correctly formed.
    def testSerialization(self):
@@ -126,7 +124,7 @@ class PKSClassTests(unittest.TestCase):
 
 
 ################################################################################
-class CSClassTests(unittest.TestCase):
+class CSClassTests(TiabTest):
    # Use serialize/unserialize to confirm that the data struct is correctly
    # formed and can be correctly formed.
    def testSerialization(self):
@@ -155,7 +153,7 @@ class CSClassTests(unittest.TestCase):
 
 
 ################################################################################
-class PKRPClassTests(unittest.TestCase):
+class PKRPClassTests(TiabTest):
    # Use serialize/unserialize to confirm that the data struct is correctly
    # formed and can be correctly formed.
    def testSerialization(self):
@@ -187,7 +185,7 @@ class PKRPClassTests(unittest.TestCase):
 
 
 ################################################################################
-class SRPClassTests(unittest.TestCase):
+class SRPClassTests(TiabTest):
    # Use serialize/unserialize to confirm that the data struct is correctly
    # formed and can be correctly formed.
    def testSerialization(self):
@@ -220,7 +218,7 @@ class SRPClassTests(unittest.TestCase):
 
 
 ################################################################################
-class PRClassTests(unittest.TestCase):
+class PRClassTests(TiabTest):
    # Use serialize/unserialize to confirm that the data struct is correctly
    # formed and can be correctly formed.
    def testSerialization(self):
@@ -233,8 +231,7 @@ class PRClassTests(unittest.TestCase):
       pr1 = PaymentRequest()
       pr1.initialize([unvalidatedScript1], [daneName1], [srp1.serialize()], 0)
       stringPR1 = pr1.serialize()
-      self.assertEqual(binary_to_hex(stringPR1),
-                       binary_to_hex(PR1_v0))
+      self.assertEqual(binary_to_hex(stringPR1), binary_to_hex(PR1_v0))
 
       # 2 TxOut scripts. Both scripts are the same. This test just confirms that
       # the serialization code works for multiple TxOut scripts.
@@ -244,22 +241,19 @@ class PRClassTests(unittest.TestCase):
                      [srp1.serialize(), srp1.serialize()],
                      0)
       stringPR2 = pr2.serialize()
-      self.assertEqual(binary_to_hex(stringPR2),
-                       binary_to_hex(PR2_v0))
+      self.assertEqual(binary_to_hex(stringPR2), binary_to_hex(PR2_v0))
 
       # Unserialize and re-serialize to confirm unserialize works.
       pr1_unser = PaymentRequest().unserialize(PR1_v0)
       pr2_unser = PaymentRequest().unserialize(PR2_v0)
       stringPR1_unser = pr1_unser.serialize()
       stringPR2_unser = pr2_unser.serialize()
-      self.assertEqual(binary_to_hex(stringPR1),
-                       binary_to_hex(PR1_v0))
-      self.assertEqual(binary_to_hex(stringPR2),
-                       binary_to_hex(PR2_v0))
+      self.assertEqual(binary_to_hex(stringPR1), binary_to_hex(PR1_v0))
+      self.assertEqual(binary_to_hex(stringPR2), binary_to_hex(PR2_v0))
 
 
 ################################################################################
-class DerivationTests(unittest.TestCase):
+class DerivationTests(TiabTest):
    # Confirm that BIP32 multipliers can be obtained from C++ and can be used to
    # create keys that match the keys directly derived via BIP32.
    def testBIP32Derivation(self):
@@ -294,5 +288,5 @@ class DerivationTests(unittest.TestCase):
       self.assertEqual(finalPub2, BIP32MasterPubKey2Comp_D1)
 
 
-if __name__ == "__main__":
-   unittest.main()
+#if __name__ == "__main__":
+#   unittest.main()

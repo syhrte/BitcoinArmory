@@ -5,11 +5,12 @@
 # See LICENSE or http://www.gnu.org/licenses/agpl.html                         #
 #                                                                              #
 ################################################################################
-from ArmoryUtils import *
-from BinaryPacker import *
-from BinaryUnpacker import *
-from Transaction import getOpCode
-from ArmoryEncryption import NULLSBD
+from armoryengine.ArmoryUtils import *
+from armoryengine.BinaryUnpacker import *
+
+from armoryengine.ArmoryEncryption import NULLSBD
+from armoryengine.Transaction import getOpCode
+
 from CppBlockUtils import HDWalletCrypto, CryptoECDSA
 import re
 

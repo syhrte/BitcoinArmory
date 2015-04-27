@@ -1,11 +1,13 @@
 import sys
 sys.path.append('..')
+import unittest
+from pytest.Tiab import TiabTest
+
 from armoryengine.ALL import *
 from jasvet import *
-import unittest
 
 
-class UtilsTester(unittest.TestCase):
+class UtilsTester(TiabTest):
 
    def testConversion(self):
       b = b'\x01\x02\x03'

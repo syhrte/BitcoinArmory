@@ -1,6 +1,6 @@
 ################################################################################
 #                                                                              #
-# Copyright (C) 2011-2014, Armory Technologies, Inc.                           #
+# Copyright (C) 2011-2015, Armory Technologies, Inc.                           #
 # Distributed under the GNU Affero General Public License (AGPL v3)            #
 # See LICENSE or http://www.gnu.org/licenses/agpl.html                         #
 #                                                                              #
@@ -9,15 +9,13 @@
 import sys
 sys.path.append('..')
 import unittest
-import sys
-sys.path.append('..')
 import textwrap
+import os
+from unittest.case import SkipTest
+from pytest.Tiab import TiabTest
 
-from armoryengine.ArmoryUtils import *
-from armoryengine.ArmoryEncryption import *
-from armoryengine.WalletEntry import *
-from armoryengine.ArmoryKeyPair import *
-from pytest.BIP32TestVectors import *
+from armoryengine.ALL import *
+from BIP32TestVectors import *
 
 WALLET_VERSION_BIN = hex_to_binary('002d3101')
 
@@ -35,9 +33,6 @@ MSO_PAYLOAD    = '\xaf'*5
 
 FAKE_KDF_ID  = '\x42'*8
 FAKE_EKEY_ID = '\x9e'*8
-
-
-
 
 
 SEEDTEST = [{}, {}]
@@ -464,7 +459,7 @@ class ABEK_Tests(unittest.TestCase):
 
       self.assertEqual(childAbek.sbdPrivKeyData, NULLSBD())
       self.assertEqual(childAbek.sbdChaincode,   nextChain)
-      self.assertEqual(childAbek.sbdPublicKey33, nextPubk)
+      self.assertEqual(childAbek.sbdPublicKey33.toHexStr(), nextPubk.toHexStr())
       self.assertEqual(childAbek.useCompressPub, True)
       self.assertEqual(childAbek.isUsed, False)
       self.assertEqual(childAbek.privKeyNextUnlock, False)
@@ -1043,7 +1038,7 @@ class ABEK_Tests(unittest.TestCase):
       self.ekey.lock()
       childAbek = abek.spawnChild(nextIdx, fsync=False)
 
-      self.assertEqual(childAbek.sbdPublicKey33, nextPubk)
+      self.assertEqual(childAbek.sbdPublicKey33.toHexStr(), nextPubk.toHexStr())
       self.assertEqual(childAbek.sbdChaincode,   nextChain)
       self.assertEqual(childAbek.useCompressPub, True)
       self.assertEqual(childAbek.isUsed, False)
@@ -1350,8 +1345,10 @@ class ABEK_Tests(unittest.TestCase):
       abekSeedNU.fillKeyPool()
 
       def cmpNodes(a,b,c, withpriv):
-         self.assertTrue(a.sbdPublicKey33 == b.sbdPublicKey33 == c.sbdPublicKey33)
-         self.assertTrue(a.sbdChaincode   == b.sbdChaincode   == c.sbdChaincode  )
+         self.assertEqual(a.sbdPublicKey33.toHexStr(), b.sbdPublicKey33.toHexStr())
+         self.assertEqual(a.sbdPublicKey33.toHexStr(), c.sbdPublicKey33.toHexStr())
+         self.assertEqual(a.sbdChaincode.toHexStr(), b.sbdChaincode.toHexStr())
+         self.assertEqual(a.sbdChaincode.toHexStr(), c.sbdChaincode.toHexStr())
          privMatch = True
          if withpriv:
             self.assertTrue( a.getPlainPrivKeyCopy() == \
@@ -1501,8 +1498,10 @@ class ABEK_Tests(unittest.TestCase):
       abekSeedNU.fillKeyPool()
 
       def cmpNodes(a,b,c, withpriv):
-         self.assertTrue(a.sbdPublicKey33 == b.sbdPublicKey33 == c.sbdPublicKey33)
-         self.assertTrue(a.sbdChaincode   == b.sbdChaincode   == c.sbdChaincode  )
+         self.assertEqual(a.sbdPublicKey33.toHexStr(), b.sbdPublicKey33.toHexStr())
+         self.assertEqual(a.sbdPublicKey33.toHexStr(), c.sbdPublicKey33.toHexStr())
+         self.assertEqual(a.sbdChaincode.toHexStr(), b.sbdChaincode.toHexStr())
+         self.assertEqual(a.sbdChaincode.toHexStr(), c.sbdChaincode.toHexStr())
          privMatch = True
          if withpriv:
             self.assertTrue( a.getPlainPrivKeyCopy() == \
@@ -1679,7 +1678,7 @@ class Armory135Tests(unittest.TestCase):
 
       self.ekey.unlock(self.password)
       for idx,imap in self.keyList.iteritems():
-         imap['PrivKey']   = SecureBinaryData(parsePrivateKeyData(imap['PrivB58'])[0])
+         imap['PrivKey']   = SecureBinaryData(parsePrivateKeyData(imap['PrivB58'], privkeybyte='\x80')[0])
          imap['PubKey']    = SecureBinaryData(hex_to_binary('04' + imap['PubKeyX'] + imap['PubKeyY']))
          imap['Chaincode'] = self.chaincode.copy()
          imap['ScrAddr']   = SCRADDR_P2PKH_BYTE + hash160(imap['PubKey'].toBinStr())
@@ -1765,7 +1764,7 @@ class Armory135Tests(unittest.TestCase):
       self.assertEqual(a135rt.privKeyNextUnlock, False)
 
       self.assertEqual(a135rt.getPlainSeedCopy(), seed)
-      self.assertEqual(a135rt.getUniqueIDB58(), self.rootID)
+      self.assertEqual(a135rt.getUniqueIDB58(forceRecompute=True, addrbyte='\x00'), self.rootID)
 
       self.assertEqual(a135rt.rootLowestUnused, 0)
       self.assertEqual(a135rt.rootNextToCalc,   0)
@@ -1787,7 +1786,7 @@ class Armory135Tests(unittest.TestCase):
 
       self.assertEqual(a135rt.getPlainSeedCopy().toHexStr(), seed.toHexStr())
       self.assertEqual(a135rt.sbdChaincode.toBinStr(), self.binAltChn)
-      self.assertEqual(a135rt.getUniqueIDB58(), '2tyiWrmKd') # diff chain->diff id
+      self.assertEqual(a135rt.getUniqueIDB58(forceRecompute=True, addrbyte='\x00'), '2tyiWrmKd') # diff chain->diff id
 
       self.assertEqual(a135rt.rootLowestUnused, 0)
       self.assertEqual(a135rt.rootNextToCalc,   0)
@@ -2105,7 +2104,7 @@ class Armory135Tests(unittest.TestCase):
       self.assertEqual(a135rt.privKeyNextUnlock, False)
 
       self.assertEqual(a135rt.getPlainSeedCopy(), seed)
-      self.assertEqual(a135rt.getUniqueIDB58(), self.rootID)
+      self.assertEqual(a135rt.getUniqueIDB58(forceRecompute=True, addrbyte='\x00'), self.rootID)
 
       self.assertEqual(a135rt.rootLowestUnused, 0)
       self.assertEqual(a135rt.rootNextToCalc,   0)
@@ -2131,7 +2130,7 @@ class Armory135Tests(unittest.TestCase):
 
       self.assertEqual(a135rt.getPlainSeedCopy(), seed)
       self.assertEqual(a135rt.sbdChaincode.toBinStr(), self.binAltChn)
-      self.assertEqual(a135rt.getUniqueIDB58(), '2tyiWrmKd') # diff chain->diff id
+      self.assertEqual(a135rt.getUniqueIDB58(forceRecompute=True, addrbyte='\x00'), '2tyiWrmKd') # diff chain->diff id
 
       self.assertEqual(a135rt.rootLowestUnused, 0)
       self.assertEqual(a135rt.rootNextToCalc,   0)
@@ -2797,7 +2796,7 @@ class Imported_NoCrypt_Tests(unittest.TestCase):
 
 
       for idx,imap in self.keyList.iteritems():
-         imap['PrivKey']   = SecureBinaryData(parsePrivateKeyData(imap['PrivB58'])[0])
+         imap['PrivKey']   = SecureBinaryData(parsePrivateKeyData(imap['PrivB58'], privkeybyte='\x80')[0])
          imap['PubKey']    = SecureBinaryData(hex_to_binary('04' + imap['PubKeyX'] + imap['PubKeyY']))
          imap['ScrAddr']   = SCRADDR_P2PKH_BYTE + hash160(imap['PubKey'].toBinStr())
       
@@ -3008,7 +3007,6 @@ class Imported_NoCrypt_Tests(unittest.TestCase):
       sbdPrivRoot  = self.keyList[0]['PrivKey'].copy()
       sbdPubkRoot  = self.keyList[0]['PubKey'].copy()
       scrAddrRoot  = self.keyList[0]['ScrAddr']
-
       sbdPubRtCompr = CryptoECDSA().CompressPoint(sbdPubkRoot)
 
       sbdPrivAikp  = self.keyList[2]['PrivKey'].copy()
@@ -3020,7 +3018,6 @@ class Imported_NoCrypt_Tests(unittest.TestCase):
 
       airt.createNewRoot(pregenRoot=sbdPrivRoot, currBlk=10)
       uniqID = hash256(sbdPubRtCompr.toBinStr())[:6]
-
 
       self.assertEqual(airt.isAkpRootRoot, True)
       self.assertEqual(airt.sbdPrivKeyData, sbdPrivRoot)
@@ -3070,25 +3067,10 @@ class Imported_NoCrypt_Tests(unittest.TestCase):
 ################################################################################
 class MBEK_Tests(unittest.TestCase):
 
+   @SkipTest
    def testMBEK(self):
       raise NotImplementedError('Have not implemented any MBEK tests yet!')
       
 
-
-
-if __name__ == "__main__":
-   unittest.main()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+#if __name__ == "__main__":
+#   unittest.main()

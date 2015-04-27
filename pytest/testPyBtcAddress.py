@@ -4,11 +4,11 @@ Created on Aug 6, 2013
 @author: Andy
 '''
 import sys
-from unittest.case import SkipTest
 sys.path.append('..')
 from pytest.Tiab import TiabTest, TOP_TIAB_BLOCK
 
 import unittest
+from unittest.case import SkipTest
 
 from CppBlockUtils import CryptoECDSA, SecureBinaryData
 from armoryengine.ArmoryUtils import hex_to_binary, RightNow, int_to_binary, \
@@ -28,9 +28,9 @@ TEST_PUB_KEY1 = '046c35e36776e997883ad4269dcc0696b10d68f6864ae73b8ad6ad03e879e43
 
 # Create an address to use for all subsequent tests
 PRIVATE_KEY = SecureBinaryData(hex_to_binary('aa'*32))
-PRIVATE_CHECKSUM = PRIVATE_KEY.getHash256()[:4]
+PRIVATE_CHECKSUM = PRIVATE_KEY.getHash256().toBinStr()[:4]
 PUBLIC_KEY  = CryptoECDSA().ComputePublicKey(PRIVATE_KEY)
-ADDRESS_20  = PUBLIC_KEY.getHash160()
+ADDRESS_20  = PUBLIC_KEY.getHash160().toBinStr()
 
 TEST_BLOCK_NUM = 100
 

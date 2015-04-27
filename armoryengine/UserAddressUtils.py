@@ -75,7 +75,7 @@ def getScriptForUserString(userStr, wltMap, lboxList):
          # This might be a public key. Confirm it's valid before proceeding.
          if isValidPK(userStr, True):
             sbdKey = SecureBinaryData(hex_to_binary(userStr))
-            a160 = sbdKey.getHash160()
+            a160 = sbdKey.getHash160().toBinStr()
             outScript = hash160_to_p2pkhash_script(a160)
             hasAddrInIt = False
 
@@ -105,7 +105,7 @@ def getScriptForUserString(userStr, wltMap, lboxList):
               'LboxID': lboxID, 
               'ShowID': hasAddrInIt}
    except:
-      #LOGEXCEPT('Invalid user string entered')
+      LOGEXCEPT('Invalid user string entered')
       return {'Script': None,
               'WltID':  None,
               'LboxID': None,

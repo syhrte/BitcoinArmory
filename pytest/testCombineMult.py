@@ -6,14 +6,12 @@ Created on Aug 4, 2013
 import sys
 sys.path.append('..')
 import unittest
-import sys
-sys.path.append('..')
 import textwrap
+from pytest.Tiab import TiabTest
 
-from armoryengine.ArmoryUtils import *
-from armoryengine.ArmoryEncryption import *
+from armoryengine.ALL import *
 
-class MultiplierTest(unittest.TestCase):
+class MultiplierTest(TiabTest):
 
    def testMultiplier3x(self):
       mult = []
@@ -52,17 +50,25 @@ class MultiplierTest(unittest.TestCase):
       pubX = pubStart[1:33] 
       pubY = pubStart[  33:] 
       
-      pubMult1 = CryptoECDSA().ECMultiplyPoint(mult[0], pubX, pubY)
-      pubX = pubMult1[:32]
-      pubY = pubMult1[ 32:]
+      pubMult1 = SecureBinaryData(0)
 
-      pubMult2 = CryptoECDSA().ECMultiplyPoint(mult[1], pubX, pubY)
-      pubX = pubMult2[:32]
-      pubY = pubMult2[ 32:]
+      self.assertTrue(CryptoECDSA().ECMultiplyPoint(mult[0], pubX, pubY, pubMult1))
+      pM1 = pubMult1.toBinStr()
+      pubX = pM1[:32]
+      pubY = pM1[ 32:]
 
-      pubMult3 = CryptoECDSA().ECMultiplyPoint(mult[2], pubX, pubY)
-      pubX = pubMult3[:32]
-      pubY = pubMult3[ 32:]
+      pubMult2 = SecureBinaryData(0)
+
+      self.assertTrue(CryptoECDSA().ECMultiplyPoint(mult[1], pubX, pubY, pubMult2))
+      pM2 = pubMult2.toBinStr()
+      pubX = pM2[:32]
+      pubY = pM2[ 32:]
+
+      pubMult3 = SecureBinaryData(0)
+      self.assertTrue(CryptoECDSA().ECMultiplyPoint(mult[2], pubX, pubY, pubMult3))
+      pM3 = pubMult3.toBinStr()
+      pubX = pM3[:32]
+      pubY = pM3[ 32:]
 
       pubPostMult = SecureBinaryData('\x04' + pubX + pubY)
       print 'Resulting Pub: ', pubPostMult.toHexStr()
@@ -76,5 +82,5 @@ class MultiplierTest(unittest.TestCase):
       
 
 
-if __name__ == "__main__":
-   unittest.main()
+#if __name__ == "__main__":
+#   unittest.main()

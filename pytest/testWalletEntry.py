@@ -1,6 +1,6 @@
 ################################################################################
 #                                                                              #
-# Copyright (C) 2011-2014, Armory Technologies, Inc.                           #
+# Copyright (C) 2011-2015, Armory Technologies, Inc.                           #
 # Distributed under the GNU Affero General Public License (AGPL v3)            #
 # See LICENSE or http://www.gnu.org/licenses/agpl.html                         #
 #                                                                              #
@@ -9,13 +9,11 @@
 import sys
 sys.path.append('..')
 import unittest
-import sys
-sys.path.append('..')
 import textwrap
+from pytest.Tiab import TiabTest
 
-from armoryengine.ArmoryUtils import *
-from armoryengine.ArmoryEncryption import *
-from armoryengine.WalletEntry import *
+from armoryengine.ALL import *
+from testArmoryWallet import MockSerializableObject
 
 WALLET_VERSION_BIN = hex_to_binary('002d3101')
 
@@ -46,34 +44,6 @@ class MockWalletFile(object):
       return 'MockWalletFile'
 
 
-################################################################################
-class MockSerializableObject(WalletEntry):
-   FILECODE = MSO_FILECODE
-
-   def __init__(self, txt=None):
-      super(MockSerializableObject, self).__init__()
-      self.setText(txt)
-
-   def setText(self, txt):
-      self.text = '' if txt is None else txt
-
-   def getEntryID(self):
-      return MSO_ENTRY_ID
-
-   def serialize(self):
-      bp = BinaryPacker()
-      bp.put(VAR_STR, self.text)
-      return bp.getBinaryString()
-
-   def unserialize(self, toUnpack):
-      bu = makeBinaryUnpacker(toUnpack) 
-      self.text = bu.get(VAR_STR)
-      return self
-      
-
-
-
-
 
 ################################################################################
 def skipFlagExists():
@@ -87,7 +57,7 @@ def skipFlagExists():
 
 
 ################################################################################
-class WalletEntryTests(unittest.TestCase):
+class WalletEntryTests(TiabTest):
 
    #############################################################################
    def testInit(self):
@@ -97,7 +67,7 @@ class WalletEntryTests(unittest.TestCase):
       self.assertEqual(we.wltByteLoc, None)
       self.assertEqual(we.wltEntrySz, None)
       self.assertEqual(we.isRequired, False)
-      self.assertEqual(we.parEntryID, None)
+      self.assertEqual(we.wltParentID, None)
       self.assertEqual(we.outerCrypt.serialize(), ArmoryCryptInfo(None).serialize())
       self.assertEqual(we.serPayload, None)
       self.assertEqual(we.defaultPad, 256)
@@ -125,7 +95,7 @@ class WalletEntryTests(unittest.TestCase):
       self.assertEqual(we.wltByteLoc, 10)
       self.assertEqual(we.wltEntrySz, 10)
       self.assertEqual(we.isRequired, True)
-      self.assertEqual(we.parEntryID, MSO_PARSCRADDR)
+      self.assertEqual(we.wltParentID, MSO_PARSCRADDR)
       self.assertEqual(we.outerCrypt.serialize(), ArmoryCryptInfo(None).serialize())
       self.assertEqual(we.serPayload, MSO_PAYLOAD)
       self.assertEqual(we.defaultPad, 128)
@@ -156,7 +126,7 @@ class WalletEntryTests(unittest.TestCase):
          expected.put(BINARY_CHUNK, MSO_FLAGS_DEL, 2)
          expected.put(UINT32,       testSize-10)
          expected.put(BINARY_CHUNK, '\x00'*(testSize-10))
-         self.assertEqual(ser, expected.getBinaryString())
+         self.assertEqual(binary_to_hex(ser), binary_to_hex(expected.getBinaryString()))
 
 
    #############################################################################
@@ -191,7 +161,7 @@ class WalletEntryTests(unittest.TestCase):
          for testSize in [0, 20, 53, 221, 222, 223, 224, 255, 256]:
             data = '\x9f'*testSize
             mso = MockSerializableObject(data)
-            mso.parEntryID = MSO_PARSCRADDR
+            mso.wltParentID = MSO_PARSCRADDR
             mso.defaultPad = pad
             serCompute = mso.serialize()
             serExpect = packVarInt(testSize)[0] + data
@@ -232,7 +202,7 @@ class WalletEntryTests(unittest.TestCase):
          for testSize in [0, 20, 53, 221, 222, 223, 224, 255, 256]:
             data = '\x9f'*testSize
             mso = MockSerializableObject(data)
-            mso.parEntryID = MSO_PARSCRADDR
+            mso.wltParentID = MSO_PARSCRADDR
             mso.defaultPad = pad
             serExpect = packVarInt(testSize)[0] + data
 
@@ -259,13 +229,12 @@ class WalletEntryTests(unittest.TestCase):
             for i in range(2):
                mso = WalletEntry.UnserializeEntry(weSerExpect, mockWlt, 0)
 
-               self.assertTrue(isinstance(mso, MockSerializableObject))
-
+               self.assertEqual(type(mso), MockSerializableObject)
                self.assertEqual(mso.wltFileRef.getName(), 'MockWalletFile')
                self.assertEqual(mso.wltByteLoc, 0)
                self.assertTrue(testSize < mso.wltEntrySz)
                self.assertEqual(mso.isRequired, False)
-               self.assertEqual(mso.parEntryID, MSO_PARSCRADDR)
+               self.assertEqual(mso.wltParentID, MSO_PARSCRADDR)
                self.assertEqual(mso.outerCrypt.serialize(), ArmoryCryptInfo(None).serialize())
                self.assertEqual(mso.defaultPad, 256)  
 
@@ -309,7 +278,7 @@ class WalletEntryTests(unittest.TestCase):
          for testSize in [0, 20, 53, 221, 222, 223, 224, 255, 256]:
             data = '\x9f'*testSize
             mso = MockSerializableObject(data)
-            mso.parEntryID = MSO_PARSCRADDR
+            mso.wltParentID = MSO_PARSCRADDR
             mso.defaultPad = pad
             serExpect = packVarInt(testSize)[0] + data
 
@@ -336,7 +305,7 @@ class WalletEntryTests(unittest.TestCase):
             self.assertEqual(mso.__class__, WalletEntry)
             self.assertTrue(mso.isUnrecognized)
             self.assertEqual(mso.serPayload, innerStr)
-            self.assertEqual(mso.parEntryID, MSO_PARSCRADDR)
+            self.assertEqual(mso.wltParentID, MSO_PARSCRADDR)
             
             serDelete = mso.serializeEntry(doDelete=True)
             delExpect = WalletEntry.CreateDeletedEntry(len(serDelete))
@@ -351,7 +320,7 @@ class WalletEntryTests(unittest.TestCase):
          for testSize in [0, 20, 53, 221, 222, 223, 224, 255, 256]:
             data = '\x9f'*testSize
             mso = MockSerializableObject(data)
-            mso.parEntryID = MSO_PARSCRADDR
+            mso.wltParentID = MSO_PARSCRADDR
             mso.defaultPad = pad
             serExpect = packVarInt(testSize)[0] + data
 
@@ -375,7 +344,7 @@ class WalletEntryTests(unittest.TestCase):
    
             mso = WalletEntry.UnserializeEntry(weSerExpect, mockWlt, 0)
             self.assertTrue(mso.isOpaque)
-            self.assertEqual(mso.parEntryID, MSO_PARSCRADDR)
+            self.assertEqual(mso.wltParentID, MSO_PARSCRADDR)
                   
             # Test that we can delete opaque objects
             serDelete = mso.serializeEntry(doDelete=True)
@@ -384,6 +353,6 @@ class WalletEntryTests(unittest.TestCase):
 
 
 ################################################################################
-if __name__ == "__main__":
-   unittest.main()
+# if __name__ == "__main__":
+#   unittest.main()
 
