@@ -196,46 +196,46 @@ FORMAT_SYMBOLS = [ \
    ['%%', 'percent symbol'] ]
 
 
-class UnserializeError(Exception): pass
-class BadAddressError(Exception): pass
-class VerifyScriptError(Exception): pass
-class FileExistsError(Exception): pass
-class ECDSA_Error(Exception): pass
-class UnitializedBlockDataError(Exception): pass
-class WalletLockError(Exception): pass
-class SignatureError(Exception): pass
-class KeyDataError(Exception): pass
-class ChecksumError(Exception): pass
-class WalletAddressError(Exception): pass
-class WalletUpdateError(Exception): pass
-class PassphraseError(Exception): pass
-class EncryptionError(Exception): pass
-class KdfError(Exception): pass
-class InterruptTestError(Exception): pass
-class NetworkIDError(Exception): pass
-class UnknownNetworkPayload(Exception): pass
-class WalletExistsError(Exception): pass
-class WalletUnregisteredError(Exception): pass
 class AddressUnregisteredError(Exception): pass
-class ConnectionError(Exception): pass
+class BadAddressError(Exception): pass
+class BadInputError(Exception): pass
+class BadURIError(Exception): pass
+class BitcoindError(Exception): pass
 class BlockchainUnavailableError(Exception): pass
+class ChecksumError(Exception): pass
+class CompressedKeyError(Exception): pass
+class ConnectionError(Exception): pass
+class ECDSA_Error(Exception): pass
+class EncryptionError(Exception): pass
+class FileExistsError(Exception): pass
+class FiniteFieldError(Exception): pass
+class InterruptTestError(Exception): pass
 class InvalidHashError(Exception): pass
 class InvalidScriptError(Exception): pass
-class BadURIError(Exception): pass
-class CompressedKeyError(Exception): pass
-class TooMuchPrecisionError(Exception): pass
-class NegativeValueError(Exception): pass
-class FiniteFieldError(Exception): pass
-class BitcoindError(Exception): pass
-class ShouldNotGetHereError(Exception): pass
-class BadInputError(Exception): pass
-class UstxError(Exception): pass
-class P2SHNotSupportedError(Exception): pass
-class NonBase58CharacterError(Exception): pass
-class isMSWallet(Exception): pass
-class UninitializedError(Exception): pass
-class MultisigError(Exception): pass
+class KdfError(Exception): pass
+class KeyDataError(Exception): pass
 class MultiThreadingError(Exception): pass
+class MultisigError(Exception): pass
+class NegativeValueError(Exception): pass
+class NetworkIDError(Exception): pass
+class NonBase58CharacterError(Exception): pass
+class P2SHNotSupportedError(Exception): pass
+class PassphraseError(Exception): pass
+class ShouldNotGetHereError(Exception): pass
+class SignatureError(Exception): pass
+class TooMuchPrecisionError(Exception): pass
+class UninitializedError(Exception): pass
+class UnitializedBlockDataError(Exception): pass
+class UnknownNetworkPayload(Exception): pass
+class UnserializeError(Exception): pass
+class UstxError(Exception): pass
+class VerifyScriptError(Exception): pass
+class WalletAddressError(Exception): pass
+class WalletExistsError(Exception): pass
+class WalletLockError(Exception): pass
+class WalletUnregisteredError(Exception): pass
+class WalletUpdateError(Exception): pass
+class isMSWallet(Exception): pass
 
 # Get the host operating system
 opsys = platform.system()
@@ -1039,12 +1039,17 @@ def addWalletToList(inWltPath, inWltList):
    '''Helper function that checks to see if a path contains a valid wallet. If
       so, the wallet will be added to the incoming list.'''
    if os.path.isfile(inWltPath):
-      if not inWltPath.endswith('backup.wallet'):
-         openfile = open(inWltPath, 'rb')
-         first8 = openfile.read(8)
-         openfile.close()
-         if first8=='\xbaWALLET\x00':
-            inWltList.append(inWltPath)
+      # ignore backups
+      if inWltPath.endswith(b'backup.wallet') \
+         or inWltPath.endswith(b'backup.wlt'):
+         return
+      openfile = open(inWltPath, 'rb')
+      first8 = openfile.read(8)
+      openfile.close()
+
+      # version 1.35 is '\xbaWALLET\x00', version 2.0 is '\xffARMORY\xff'
+      if first8 in(b'\xbaWALLET\x00', b'\xffARMORY\xff'):
+         inWltList.append(inWltPath)
    else:
       if not os.path.isdir(inWltPath):
          LOGWARN('Path %s does not exist.' % inWltPath)

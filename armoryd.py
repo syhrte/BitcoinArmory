@@ -154,13 +154,8 @@ def addMultWallets(inWltPaths, inWltMap):
    for aWlt in inWltPaths:
       # Logic basically taken from loadWalletsAndSettings()
       try:
-         wltLoad = PyBtcWallet().readWalletFile(aWlt)
+         wltLoad = ArmoryWalletFile.ReadWalletFile(aWlt)
          wltID = wltLoad.uniqueIDB58
-         wltLoad.fillAddressPool()
-
-         # For now, no wallets are excluded. If this changes....
-         #if aWlt in wltExclude or wltID in wltExclude:
-         #   continue
 
          # A directory can have multiple versions of the same
          # wallet. We'd prefer to skip watch-only wallets.
@@ -175,16 +170,11 @@ def addMultWallets(inWltPaths, inWltMap):
                LOGWARN('     Wallet 1 (loaded):  %s', aWlt)
                LOGWARN('     Wallet 2 (skipped): %s', prevWltPath)
             else:
-               LOGWARN('Second wallet is more useful than the first one...')
-               LOGWARN('     Wallet 1 (skipped): %s', aWlt)
-               LOGWARN('     Wallet 2 (loaded):  %s', \
-                       inWltMap[wltID].walletPath)
-         else:
-            # Update the wallet structs.
-            inWltMap[wltID] = wltLoad
-            newWltList.append(wltID)
+               # Update the wallet structs.
+               inWltMap[wltID] = wltLoad
+               newWltList.append(wltID)
       except:
-         LOGEXCEPT('***WARNING: Unable to load wallet %s. Skipping.', aWlt)
+         LOGEXCEPT('***WARNING: Unable to load wallet file %s. Skipping.', aWlt)
          raise
 
    return newWltList
@@ -2557,6 +2547,29 @@ class Armory_Json_Rpc_Server(jsonrpc.JSONRPC):
       return retStr
 
 
+
+   #############################################################################
+   # Function that creates a new 2.0 wallet
+   @catchErrsForJSON
+   def jsonrpc_createwallet(self, name, passphrase):
+      """
+      DESCRIPTION:
+      Create a new 2.0 wallet
+      PARAMETERS:
+      name - A human-readable name for the wallet
+      passphrase - The passphrase that unlocks this wallet
+      RETURN:
+      A b58ID of the wallet.
+      """
+
+      LOGERROR("passphrase is %s" % passphrase)
+
+      entropy = SecureBinaryData().GenerateRandom(32)
+      pwd = SecureBinaryData(str(passphrase))
+      newWallet = ArmoryWalletFile.CreateWalletFile_SinglePwd(name, pwd, sbdExtraEntropy=entropy)
+      return newWallet.uniqueIDB58
+
+
    #############################################################################
    # Function that sets the active lockbox using a B58 string.
    @catchErrsForJSON
@@ -2985,7 +2998,7 @@ class Armory_Daemon(object):
             LOGINFO('Number of wallets read in: %d', numWallets)
             for wltID, wlt in self.WltMap.iteritems():
                dispStr  = ('   Wallet (%s):' % wltID).ljust(25)
-               dispStr +=  '"'+wlt.labelName.ljust(32)+'"   '
+               #dispStr +=  '"'+wlt.labelName.ljust(32)+'"   '
                dispStr +=  '(Encrypted)' if wlt.useEncryption else '(No Encryption)'
                LOGINFO(dispStr)
 
@@ -3041,8 +3054,8 @@ class Armory_Daemon(object):
          LOGINFO('Current block number: %d', self.latestBlockNum)
          LOGINFO('Current block received at: %d', self.timeReceived)
 
-         LOGINFO('Wallet balance: %s' % \
-                 coin2str(self.curWlt.getBalance('Spendable')))
+#         LOGINFO('Wallet balance: %s' % \
+#                 coin2str(self.curWlt.getBalance('Spendable')))
 
          # This is CONNECT call for armoryd to talk to bitcoind
          LOGINFO('Set up connection to bitcoind')
@@ -3305,6 +3318,9 @@ class Armory_Daemon(object):
    #############################################################################
    @AllowAsync
    def checkWallet(self):
+      if isinstance(self.curWlt, WalletEntry):
+         self.lastChecked = RightNow()
+         return
       if self.lock.acquire(False):
          wltStatus = PyBtcWalletRecovery().ProcessWallet(None, self.curWlt, \
                                                          Mode=5)
@@ -3331,7 +3347,7 @@ class Armory_Daemon(object):
       try:
 
          for wltID,wlt in self.WltMap.iteritems():
-            wlt.checkWalletLockTimeout()
+            wlt.masterEkeyRef.checkLockTimeout()
 
          # Check for new blocks in the latest blk0XXXX.dat file.
          if TheBDM.getState()==BDM_BLOCKCHAIN_READY:

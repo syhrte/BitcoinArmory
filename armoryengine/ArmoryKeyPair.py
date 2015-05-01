@@ -129,6 +129,20 @@ class ArmoryKeyPair(WalletEntry):
       self.scrAddrLabelRef    = None
 
 
+
+   def getKeys(self):
+      return self.akpChildByScrAddr.keys()
+
+   def registerWallet(self, isNew=False):
+      if len(self.uniqueIDB58) == 0:
+         raise('cannot register a wallet with an empty uniqueIDB58')
+      
+      #this returns a pointer to the BtcWallet C++ object. This object is
+      #instantiated at registration and is unique for the BDV object, so we
+      #should only ever set the cppWallet member here 
+      self.cppWallet = TheBDM.registerWallet(self.getKeys(), self.uniqueIDB58, isNew)
+
+
    #############################################################################
    def setWalletAndCryptInfo(self, wltRef=None, cryptInfo=None, ekeyRef=None, kdfRef=None):
       """
@@ -1724,6 +1738,9 @@ class Armory135Root(Armory135KeyPair, ArmorySeededKeyPair):
       else:
          return SecureBinaryData(sbdPriv.toBinStr() + self.sbdChaincode.toBinStr())
 
+   def getKeys(self):
+      return self.root135ScrAddrMap.keys()
+
 
    #############################################################################
    @EkeyMustBeUnlocked('masterEkeyRef')
@@ -1969,10 +1986,10 @@ class ArmoryBip32ExtendedKey(ArmoryKeyPair):
       extend1,mult1 = deriveChildAndMult()
       extend2,mult2 = deriveChildAndMult()
 
-      if extend1.getPublicKey().toBinStr() == extend2.getPublicKey().toBinStr():
+      if extend1.getPublicKey().toHexStr() == extend2.getPublicKey().toHexStr():
          extend2.deletePrivateKey()
          with open(MULT_LOG_FILE,'a') as f:
-            a160hex = binary_to_hex(hash160(extend1.getPublicKey().toBinStr()))
+            a160hex = hash160(extend1.getPublicKey().toHexStr())
             f.write('BIP32 deriv (pkh, mult): %s,%s\n' % (a160hex, mult1.toHexStr()))
       else:
          LOGCRIT('Chaining failed!  Computed keys are different!')
@@ -3077,4 +3094,4 @@ class ScriptTemplateABEK(ArmoryBip32ExtendedKey):
 
 
 
-
+from armoryengine.BDM import TheBDM
