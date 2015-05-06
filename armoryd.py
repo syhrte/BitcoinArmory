@@ -155,27 +155,31 @@ def addMultWallets(inWltPaths, inWltMap):
       # Logic basically taken from loadWalletsAndSettings()
       try:
          wltLoad = ArmoryWalletFile.ReadWalletFile(aWlt)
-         wltID = wltLoad.uniqueIDB58
+         for wlt in wltLoad.topLevelRoots:
+            wltID = wlt.uniqueIDB58
+            LOGERROR("loading %s" % wltID)
 
-         # A directory can have multiple versions of the same
-         # wallet. We'd prefer to skip watch-only wallets.
-         if wltID in inWltMap.keys():
-            LOGWARN('***WARNING: Duplicate wallet (%s) detected' % wltID)
-            wo1 = inWltMap[wltID].watchingOnly
-            wo2 = wltLoad.watchingOnly
-            if wo1 and not wo2:
-               prevWltPath = inWltMap[wltID].walletPath
-               inWltMap[wltID] = wltLoad
-               LOGWARN('First wallet is more useful than the second one...')
-               LOGWARN('     Wallet 1 (loaded):  %s', aWlt)
-               LOGWARN('     Wallet 2 (skipped): %s', prevWltPath)
+            # A directory can have multiple versions of the same
+            # wallet. We'd prefer to skip watch-only wallets.
+            if wltID in inWltMap.keys():
+               LOGWARN('***WARNING: Duplicate wallet (%s) detected' % wltID)
+               wo1 = inWltMap[wltID].watchingOnly
+               wo2 = wltLoad.watchingOnly
+               if wo1 and not wo2:
+                  prevWltPath = inWltMap[wltID].walletPath
+                  inWltMap[wltID] = wltLoad
+                  LOGWARN('First wallet is more useful than the second one...')
+                  LOGWARN('     Wallet 1 (loaded):  %s', aWlt)
+                  LOGWARN('     Wallet 2 (skipped): %s', prevWltPath)
             else:
                # Update the wallet structs.
-               inWltMap[wltID] = wltLoad
+               inWltMap[wltID] = wlt
                newWltList.append(wltID)
       except:
          LOGEXCEPT('***WARNING: Unable to load wallet file %s. Skipping.', aWlt)
          raise
+
+   LOGERROR("wallets: %s" % newWltList)
 
    return newWltList
 
@@ -728,12 +732,14 @@ class Armory_Json_Rpc_Server(jsonrpc.JSONRPC):
 
       retStr = 'Wallet %s is already unlocked.' % self.curWlt
 
-      if self.curWlt.isLocked:
+      if self.curWlt.masterEkeyRef.isLocked():
          try:
             self.sbdPassphrase = SecureBinaryData(str(passphrase))
-            self.curWlt.unlock(securePassphrase=self.sbdPassphrase,
-                               tempKeyLifetime=int(timeout))
-            retStr = 'Wallet %s has been unlocked.' % self.curWlt.uniqueIDB58
+            self.curWlt.masterEkeyRef.unlock(self.sbdPassphrase)
+            if self.curWlt.masterEkeyRef.isLocked():
+               retStr = 'Wallet %s failed to unlock' % self.curWlt.uniqueIDB58
+            else:
+               retStr = 'Wallet %s has been unlocked.' % self.curWlt.uniqueIDB58
          finally:
             self.sbdPassphrase.destroy() # Ensure SBD is destroyed.
 
@@ -753,8 +759,8 @@ class Armory_Json_Rpc_Server(jsonrpc.JSONRPC):
       """
 
       # Lock the wallet. It should lock but we'll check to be safe.
-      self.curWlt.lock()
-      retStr = 'Wallet is %slocked.' % '' if self.curWlt.isLocked else 'not '
+      self.curWlt.masterEkeyRef.lock()
+      retStr = 'Wallet is %slocked.' % '' if self.curWlt.masterEkeyRef.isLocked() else 'not '
       return retStr
 
 
@@ -2999,7 +3005,7 @@ class Armory_Daemon(object):
             for wltID, wlt in self.WltMap.iteritems():
                dispStr  = ('   Wallet (%s):' % wltID).ljust(25)
                #dispStr +=  '"'+wlt.labelName.ljust(32)+'"   '
-               dispStr +=  '(Encrypted)' if wlt.useEncryption else '(No Encryption)'
+#               dispStr +=  '(Encrypted)' if wlt.useEncryption else '(No Encryption)'
                LOGINFO(dispStr)
 
             # Log info on the lockboxes we've loaded.
@@ -3318,6 +3324,7 @@ class Armory_Daemon(object):
    #############################################################################
    @AllowAsync
    def checkWallet(self):
+      LOGERROR("wallet type: %s" % type(self.curWlt))
       if isinstance(self.curWlt, WalletEntry):
          self.lastChecked = RightNow()
          return
