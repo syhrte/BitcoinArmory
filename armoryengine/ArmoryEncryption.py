@@ -901,8 +901,11 @@ class EncryptionKey(WalletEntry):
 
    #############################################################################
    @VerifyArgTypes(passphrase=SecureBinaryData)
-   def unlock(self, passphrase, kdfObj=None, justVerify=False):
+   def unlock(self, passphrase, kdfObj=None, justVerify=False, timeout=None):
       LOGDEBUG('Unlocking encryption key %s', binary_to_hex(self.ekeyID))
+
+      if timeout is None:
+         timeout = self.lockTimeout
 
       if kdfObj is None:
          kdfObj = self.kdfRef
@@ -927,7 +930,7 @@ class EncryptionKey(WalletEntry):
       if justVerify:
          self.masterKeyPlain.destroy()
       else:
-         self.relockAtTime = RightNow() + self.lockTimeout
+         self.relockAtTime = RightNow() + timeout
 
       return True
 
@@ -1159,11 +1162,10 @@ class EncryptionKey(WalletEntry):
          newIV8 = SecureBinaryData().GenerateRandom(8)
          
       
+      if not self.unlock(oldPass):
+         raise PassphraseError('Wrong passphrase given')
    
       try:
-         if not self.unlock(oldPass):
-            raise PassphraseError('Wrong passphrase given')
-
          withTest = (len(self.testStringEncr) != 0)
 
          # Not creating a new key, but the process is the same; use preGenKey arg
