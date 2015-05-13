@@ -133,6 +133,7 @@ class AddressNotInWallet(Exception): pass
 class BlockchainNotReady(Exception): pass
 class InvalidTransaction(Exception): pass
 class IncompleteTransaction(Exception): pass
+class InvalidWalletEntry(Exception): pass
 
 # A dictionary that includes the names of all functions an armoryd user can
 # call from the armoryd server. Implemented on the server side so that a client
@@ -155,27 +156,34 @@ def addMultWallets(inWltPaths, inWltMap):
       # Logic basically taken from loadWalletsAndSettings()
       try:
          wltLoad = ArmoryWalletFile.ReadWalletFile(aWlt)
-         wltID = wltLoad.uniqueIDB58
+         for wlt in wltLoad.topLevelRoots:
+            if isinstance(wlt, ABEK_BIP44Seed):
+               # go down to the ABEK_BIP44Purpose level "purpose"
+               childIndex = CreateChildIndex(44, isHardened=True)
+               purpose = wlt.getChildByIndex(childIndex)
+               
+               # go down to the ABEK_StdBip32Seed level "cointype"
+               index = 1 if USE_TESTNET else 0
+               childIndex = CreateChildIndex(index, isHardened=True)
+               cointype = purpose.getChildByIndex(childIndex)
 
-         # A directory can have multiple versions of the same
-         # wallet. We'd prefer to skip watch-only wallets.
-         if wltID in inWltMap.keys():
-            LOGWARN('***WARNING: Duplicate wallet (%s) detected' % wltID)
-            wo1 = inWltMap[wltID].watchingOnly
-            wo2 = wltLoad.watchingOnly
-            if wo1 and not wo2:
-               prevWltPath = inWltMap[wltID].walletPath
-               inWltMap[wltID] = wltLoad
-               LOGWARN('First wallet is more useful than the second one...')
-               LOGWARN('     Wallet 1 (loaded):  %s', aWlt)
-               LOGWARN('     Wallet 2 (skipped): %s', prevWltPath)
+               # go down to the ABEK_StdWallet level "account"
+               for i, wallet in cointype.akpChildByIndex.iteritems():
+                  wltID = wallet.uniqueIDB58
+                  LOGINFO("loading %s" % wltID)
+                  inWltMap[wltID] = wallet
+                  newWltList.append(wltID)
             else:
-               # Update the wallet structs.
-               inWltMap[wltID] = wltLoad
-               newWltList.append(wltID)
+               # TODO handle Armory135 types
+               continue
+
+            # TODO detect duplicates and prefer non-watching-only
+            
       except:
          LOGEXCEPT('***WARNING: Unable to load wallet file %s. Skipping.', aWlt)
          raise
+
+   LOGERROR("wallets: %s" % newWltList)
 
    return newWltList
 
@@ -352,6 +360,10 @@ class Armory_Json_Rpc_Server(jsonrpc.JSONRPC):
       RETURN:
       Number of Bitcoins sent by the sender to the current wallet.
       """
+
+      if TheBDM.getState()!=BDM_BLOCKCHAIN_READY:
+         raise BlockchainNotReady('Wallet is not loaded yet.')
+
       totalReceived = 0.0
       ledgerEntries = self.curWlt.getTxLedger('blk')
 
@@ -400,7 +412,7 @@ class Armory_Json_Rpc_Server(jsonrpc.JSONRPC):
           retVal['Error'] = 'File %s already exists. Will not overwrite.' % \
                             backupFilePath
       else:
-          if not self.curWlt.backupWalletFile(backupFilePath):
+          if not self.curWlt.wltFileRef.backupWalletFile(backupFilePath):
              # If we have a failure here, we probably won't know why. Not much
              # to do other than ask the user to check the armoryd server.
              retVal['Error'] = "Backup failed. Check the armoryd server logs."
@@ -584,7 +596,7 @@ class Armory_Json_Rpc_Server(jsonrpc.JSONRPC):
       retDict = {}
       privKey = str(privKey)
       privKeyValid = True
-      if self.curWlt.useEncryption and self.curWlt.isLocked:
+      if self.curWlt.useEncryption and self.curWlt.masterEkeyRef.isLocked():
          raise WalletUnlockNeeded
 
       # Make sure the key is one we can support
@@ -686,27 +698,61 @@ class Armory_Json_Rpc_Server(jsonrpc.JSONRPC):
 
    #############################################################################
    @catchErrsForJSON
-   def jsonrpc_encryptwallet(self, passphrase):
+   def jsonrpc_encryptwallet(self, oldpassphrase, newpassphrase):
       """
       DESCRIPTION:
-      Encrypt a wallet with a given passphrase.
+      Encrypt a wallet with a new passphrase.
       PARAMETERS:
-      passphrase - The wallet's new passphrase.
+      oldpassphrase - The wallet's old passphrase
+      newpassphrase - The wallet's new passphrase.
       RETURN:
       A string indicating that the encryption was successful.
       """
 
       retStr = 'Wallet %s has been encrypted.' % self.curWlt.uniqueIDB58
 
-      if self.curWlt.isLocked:
-         raise WalletUnlockNeeded
+      try:
+         self.sbdPassphrase = SecureBinaryData(str(newpassphrase))
+         oldpassphrase = SecureBinaryData(str(oldpassphrase))
+         self.curWlt.masterEkeyRef.changeEncryptionParams(oldpassphrase, self.sbdPassphrase)
+         self.curWlt.masterEkeyRef.lock()
+      except PassphraseError as e:
+         return e.message
+      finally:
+         self.sbdPassphrase.destroy() # Ensure SBD is destroyed.
+         oldpassphrase.destroy()
+      return retStr
+
+   @catchErrsForJSON
+   def jsonrpc_listaddresses(self, wltID=None):
+      """
+      DESCRIPTION:
+      list all addresses associated with the wallet
+      PARAMETERS:
+      wltID - (Default=currently loaded wallet) The wallet ID 
+      RETURN:
+      A list of base58 strings of the addresses associated with the wallet.
+      """
+
+      if wltID is None:
+         wlt = self.curWlt
       else:
-         try:
-            self.sbdPassphrase = SecureBinaryData(str(passphrase))
-            self.curWlt.changeWalletEncryption(securePassphrase=self.sbdPassphrase)
-            self.curWlt.lock()
-         finally:
-            self.sbdPassphrase.destroy() # Ensure SBD is destroyed.
+         wlt = self.inWltMap.get(wltID)
+         if wlt is None:
+            raise WalletDoesNotExist("Wallet %s does not exist" % wltID)
+
+      # TODO handle Armory135
+
+
+      retStr = "external:\n\n"
+      external = wlt.getChildByIndex(0)
+      for i, c in external.akpChildByIndex.iteritems():
+         retStr += "%s: %s\n" % (i, c.getAddrStr())
+
+      retStr += "\n\ninternal:\n\n"
+      internal = wlt.getChildByIndex(1)
+      for i, c in internal.akpChildByIndex.iteritems():
+         retStr += "%s: %s\n" % (i, c.getAddrStr())
 
       return retStr
 
@@ -726,16 +772,16 @@ class Armory_Json_Rpc_Server(jsonrpc.JSONRPC):
       unlocked.
       """
 
-      retStr = 'Wallet %s is already unlocked.' % self.curWlt
+      retStr = 'Wallet %s is already unlocked.' % self.curWlt.uniqueIDB58
 
-      if self.curWlt.isLocked:
-         try:
-            self.sbdPassphrase = SecureBinaryData(str(passphrase))
-            self.curWlt.unlock(securePassphrase=self.sbdPassphrase,
-                               tempKeyLifetime=int(timeout))
+      if self.curWlt.masterEkeyRef.isLocked():
+         self.sbdPassphrase = SecureBinaryData(str(passphrase))
+         success = self.curWlt.masterEkeyRef.unlock(self.sbdPassphrase, timeout=float(timeout))
+         if self.curWlt.masterEkeyRef.isLocked():
+            retStr = 'Wallet %s failed to unlock' % self.curWlt.uniqueIDB58
+         else:
             retStr = 'Wallet %s has been unlocked.' % self.curWlt.uniqueIDB58
-         finally:
-            self.sbdPassphrase.destroy() # Ensure SBD is destroyed.
+         self.sbdPassphrase.destroy() # Ensure SBD is destroyed.
 
       return retStr
 
@@ -753,8 +799,8 @@ class Armory_Json_Rpc_Server(jsonrpc.JSONRPC):
       """
 
       # Lock the wallet. It should lock but we'll check to be safe.
-      self.curWlt.lock()
-      retStr = 'Wallet is %slocked.' % '' if self.curWlt.isLocked else 'not '
+      self.curWlt.masterEkeyRef.lock()
+      retStr = 'Wallet is %slocked.' % '' if self.curWlt.masterEkeyRef.isLocked() else 'not '
       return retStr
 
 
@@ -839,17 +885,26 @@ class Armory_Json_Rpc_Server(jsonrpc.JSONRPC):
 
    #############################################################################
    @catchErrsForJSON
-   def jsonrpc_getnewaddress(self):
+   def jsonrpc_getnewaddress(self, internal=0):
       """
       DESCRIPTION:
       Get a new Base58 address from the currently loaded wallet.
       PARAMETERS:
-      None
+      internal - 1 means you will get a "change" address.
+                 Ignored for Armory135 wallets
       RETURN:
       The wallet's next unused public address in Base58 form.
       """
 
-      addr = self.curWlt.getNextUnusedAddress()
+      i = int(internal)
+      if i not in (0,1):
+         raise RuntimeError("internal should be 0 or 1")
+
+      if i == 0:
+         addr = self.curWlt.getNextReceivingAddress()
+      else:
+         addr = self.curWlt.getNextChangeAddress()
+
       return addr.getAddrStr()
 
 
@@ -869,7 +924,7 @@ class Armory_Json_Rpc_Server(jsonrpc.JSONRPC):
       """
 
       # Cannot dump the private key for a locked wallet
-      if self.curWlt.isLocked:
+      if self.curWlt.masterEkeyRef.isLocked():
          raise WalletUnlockNeeded
 
       # The first byte must be the correct net byte, and the
@@ -877,26 +932,9 @@ class Armory_Json_Rpc_Server(jsonrpc.JSONRPC):
       if not checkAddrStrValid(addr58):
          raise InvalidBitcoinAddress
 
-      retVal = ''
-      addr160 = addrStr_to_hash160(addr58, False)[1]
-
-      pyBtcAddress = self.curWlt.getAddrByHash160(addr160)
-      if pyBtcAddress == None:
-         raise PrivateKeyNotFound
-
-      try:
-         self.privKey = SecureBinaryData(pyBtcAddress.serializePlainPrivateKey())
-         if keyFormat.lower() == 'base58':
-            retVal = privKey_to_base58(self.privKey.toBinStr())
-
-         elif keyFormat.lower() == 'hex':
-            retVal = binary_to_hex(self.privKey.toBinStr())
-         else:
-            retVal = 'ERROR: Requested format (%s) is invalid.' % keyFormat
-      finally:
-         self.privKey.destroy()
-
-      return retVal
+      scrAddr = addrStr_to_scrAddr(addr58)
+      address = self.curWlt.getAddress(scrAddr)
+      return address.getSerializedPrivKey(keyFormat)
 
 
    #############################################################################
@@ -924,7 +962,21 @@ class Armory_Json_Rpc_Server(jsonrpc.JSONRPC):
          else:
             raise WalletDoesNotExist
 
-      return self.wltToUse.toJSONMap()
+      external = self.wltToUse.external.childIndex
+      internal = self.wltToUse.internal.childIndex
+
+      # TODO add wallet label information
+      
+      return {
+         "walletversion":   getVersionString(ARMORY_WALLET_VERSION),
+         "balance":         AmountToJSON(self.wltToUse.getBalance('Spend')),
+         "numaddrgen":      external + internal,
+         "externaladdrgen": external,
+         "internaladdrgen": internal,
+         "createdate":      self.wltToUse.keyBornTime,
+         "walletid":        self.wltToUse.uniqueIDB58,
+         "islocked":        self.wltToUse.masterEkeyRef.isLocked(),
+      }
 
 
    #############################################################################
@@ -934,7 +986,7 @@ class Armory_Json_Rpc_Server(jsonrpc.JSONRPC):
       DESCRIPTION:
       Get the balance of the currently loaded wallet.
       PARAMETERS:
-      baltype - (Default=spendable) A string indicating the balance type to
+      baltype - (Default=Spendable) A string indicating the balance type to
                 retrieve from the current wallet.
       RETURN:
       The current wallet balance (BTC), or -1 if an error occurred.
@@ -945,8 +997,9 @@ class Armory_Json_Rpc_Server(jsonrpc.JSONRPC):
       # Proceed only if the blockchain's good. Wallet value could be unreliable
       # otherwise.
       if TheBDM.getState()==BDM_BLOCKCHAIN_READY:
-         if not baltype in ['spendable', 'spend', 'unconf', 'unconfirmed', \
-                            'total', 'ultimate', 'unspent', 'full']:
+         if baltype.lower() not in ['spendable', 'spend', 'unconf',
+                                    'unconfirmed', 'total', 'ultimate',
+                                    'unspent', 'full']:
             LOGERROR('Unrecognized getbalance string: "%s"', baltype)
          else:
             retVal = AmountToJSON(self.curWlt.getBalance(baltype))
@@ -971,12 +1024,14 @@ class Armory_Json_Rpc_Server(jsonrpc.JSONRPC):
       The current wallet balance (BTC), or -1 if an error occurred.
       """
 
-      retVal = -1
+      if TheBDM.getState()!=BDM_BLOCKCHAIN_READY:
+         raise BlockchainNotReady('Wallet is not loaded yet.')
 
       if not baltype in ['spendable','spend', 'unconf', 'unconfirmed', \
                          'ultimate','unspent', 'full']:
          raise BadInputError('Unrecognized getaddrbalance type: %s' % baltype)
 
+      retVal = -1
 
       topBlk = TheBDM.getTopBlockHeight()
       addrList = [a.strip() for a in inB58.split(",")]
@@ -1018,6 +1073,13 @@ class Armory_Json_Rpc_Server(jsonrpc.JSONRPC):
       RETURN:
       The balance received from the incoming address (BTC).
       """
+
+      if TheBDM.getState()!=BDM_BLOCKCHAIN_READY:
+         raise BlockchainNotReady('Wallet is not loaded yet.')
+
+      if not baltype in ['spendable','spend', 'unconf', 'unconfirmed', \
+                         'ultimate','unspent', 'full']:
+         raise BadInputError('Unrecognized getaddrbalance type: %s' % baltype)
 
       if CLI_OPTIONS.offline:
          raise ValueError('Cannot get received amount when offline')
@@ -1062,6 +1124,9 @@ class Armory_Json_Rpc_Server(jsonrpc.JSONRPC):
       Armory for offline signing.
       """
 
+      if TheBDM.getState()!=BDM_BLOCKCHAIN_READY:
+         raise BlockchainNotReady('Wallet is not loaded yet.')
+
       if CLI_OPTIONS.offline:
          raise ValueError('Cannot create transactions when offline')
       ustxScr = getScriptForUserString(recAddr, self.serverWltMap, \
@@ -1090,6 +1155,9 @@ class Armory_Json_Rpc_Server(jsonrpc.JSONRPC):
       An ASCII-formatted unsigned transaction, similar to the one output by
       Armory for offline signing.
       """
+
+      if TheBDM.getState()!=BDM_BLOCKCHAIN_READY:
+         raise BlockchainNotReady('Wallet is not loaded yet.')
 
       if CLI_OPTIONS.offline:
          raise ValueError('Cannot create transactions when offline')
@@ -1127,6 +1195,9 @@ class Armory_Json_Rpc_Server(jsonrpc.JSONRPC):
       An ASCII-formatted unsigned transaction, similar to the one output by
       Armory for offline signing.
       """
+
+      if TheBDM.getState()!=BDM_BLOCKCHAIN_READY:
+         raise BlockchainNotReady('Wallet is not loaded yet.')
 
       if CLI_OPTIONS.offline:
          raise ValueError('Cannot create transactions when offline')
@@ -1166,6 +1237,9 @@ class Armory_Json_Rpc_Server(jsonrpc.JSONRPC):
       An ASCII-formatted unsigned transaction, similar to the one output by
       Armory for offline signing.
       """
+
+      if TheBDM.getState()!=BDM_BLOCKCHAIN_READY:
+         raise BlockchainNotReady('Wallet is not loaded yet.')
 
       if CLI_OPTIONS.offline:
          raise ValueError('Cannot create transactions when offline')
@@ -1241,7 +1315,8 @@ class Armory_Json_Rpc_Server(jsonrpc.JSONRPC):
          # For now, lockboxes can only use C++ wallets, which use a different
          # set of calls and such. If we got back a Python wallet, convert it.
          if not wltIsCPP:
-            ledgerWlt = ledgerWlt.cppWallet
+            # TODO: add the internal child as well
+            ledgerWlt = ledgerWlt.external.cppWallet
          else:
             b58Type = 'lockbox'
 
@@ -1413,7 +1488,7 @@ class Armory_Json_Rpc_Server(jsonrpc.JSONRPC):
       The number of history pages.
       """
 
-      return self.curWlt.cppWallet.getHistoryPageCount()
+      return self.curWlt.getHistoryPageCount()
 
    #############################################################################
    # NB: For now, this is incompatible with lockboxes.
@@ -1607,7 +1682,6 @@ class Armory_Json_Rpc_Server(jsonrpc.JSONRPC):
                'difficulty':        TheBDM.getTopBlockDifficulty() \
                                     if isReady else -1,
                'testnet':           USE_TESTNET,
-               'keypoolsize':       self.curWlt.addrPoolSize
              }
 
       return info
@@ -1762,7 +1836,7 @@ class Armory_Json_Rpc_Server(jsonrpc.JSONRPC):
                                  tx.getBlockHeight()) + 1
          out['orderinblock'] = int(tx.getBlockTxIndex())
 
-         le = self.curWlt.cppWallet.getLedgerEntryForTx(binhash)
+         le = self.curWlt.getLedgerEntryForTx(binhash)
          amt = le.getValue()
          out['netdiff']     = AmountToJSON(amt)
          out['totalinputs'] = AmountToJSON(sum(inputvalues))
@@ -2050,7 +2124,7 @@ class Armory_Json_Rpc_Server(jsonrpc.JSONRPC):
          scriptType = None
          if displayInfo['WltID'] is not None:
             if displayInfo['WltID'] == self.curWlt.uniqueIDB58:
-               if self.curWlt.useEncryption and self.curWlt.isLocked:
+               if self.curWlt.useEncryption and self.curWlt.masterEkeyRef.isLocked():
                   raise WalletUnlockNeeded, "You need to unlock this wallet before you can sign this transaction"
                a160 = CheckHash160(ustxi.scrAddrs[0])
                addrObj = self.curWlt.getAddrByHash160(a160)
@@ -2062,7 +2136,7 @@ class Armory_Json_Rpc_Server(jsonrpc.JSONRPC):
                for a160 in lockbox.a160List:
                   addrObj = self.curWlt.getAddrByHash160(a160)
                   if addrObj:
-                     if self.curWlt.useEncryption and self.curWlt.isLocked:
+                     if self.curWlt.useEncryption and self.curWlt.masterEkeyRef.isLocked():
                         raise WalletUnlockNeeded, "You need to unlock this wallet before you can sign this transaction"
                      ustxi.createAndInsertSignature(pytx, addrObj.binPrivKey32_Plain)
                      signed += 1
@@ -2447,7 +2521,7 @@ class Armory_Json_Rpc_Server(jsonrpc.JSONRPC):
       for addr in newAddressMetaData.keys():
          if not checkAddrStrValid(addr):
             raise InvalidBitcoinAddress
-         if not self.curWlt.addrMap.has_key(addrStr_to_hash160(addr, False)[1]):
+         if not self.curWlt.hasAddr(addrStr_to_hash160(addr, False)[1]):
             raise AddressNotInWallet
       self.addressMetaData.update(newAddressMetaData)
 
@@ -2549,17 +2623,17 @@ class Armory_Json_Rpc_Server(jsonrpc.JSONRPC):
 
 
    #############################################################################
-   # Function that creates a new 2.0 wallet
+   # Function that creates a new 2.0 wallet file
    @catchErrsForJSON
-   def jsonrpc_createwallet(self, name, passphrase):
+   def jsonrpc_createwalletfile(self, name, passphrase):
       """
       DESCRIPTION:
-      Create a new 2.0 wallet
+      Create a new 2.0 wallet file.
       PARAMETERS:
-      name - A human-readable name for the wallet
-      passphrase - The passphrase that unlocks this wallet
+      name - A human-readable name for the wallet file
+      passphrase - The passphrase that unlocks this wallet file
       RETURN:
-      A b58ID of the wallet.
+      A b58ID of the wallet file.
       """
 
       LOGERROR("passphrase is %s" % passphrase)
@@ -2567,6 +2641,8 @@ class Armory_Json_Rpc_Server(jsonrpc.JSONRPC):
       entropy = SecureBinaryData().GenerateRandom(32)
       pwd = SecureBinaryData(str(passphrase))
       newWallet = ArmoryWalletFile.CreateWalletFile_SinglePwd(name, pwd, sbdExtraEntropy=entropy)
+
+
       return newWallet.uniqueIDB58
 
 
@@ -2999,7 +3075,7 @@ class Armory_Daemon(object):
             for wltID, wlt in self.WltMap.iteritems():
                dispStr  = ('   Wallet (%s):' % wltID).ljust(25)
                #dispStr +=  '"'+wlt.labelName.ljust(32)+'"   '
-               dispStr +=  '(Encrypted)' if wlt.useEncryption else '(No Encryption)'
+#               dispStr +=  '(Encrypted)' if wlt.useEncryption else '(No Encryption)'
                LOGINFO(dispStr)
 
             # Log info on the lockboxes we've loaded.
@@ -3318,6 +3394,7 @@ class Armory_Daemon(object):
    #############################################################################
    @AllowAsync
    def checkWallet(self):
+      LOGERROR("wallet type: %s" % type(self.curWlt))
       if isinstance(self.curWlt, WalletEntry):
          self.lastChecked = RightNow()
          return

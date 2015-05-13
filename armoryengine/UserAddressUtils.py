@@ -45,7 +45,7 @@ def getScriptForUserString(userStr, wltMap, lboxList):
 
    def getWltIDForScrAddr(scrAddr, walletMap):
       for iterID,iterWlt in walletMap.iteritems():
-         if iterWlt.hasScrAddr(scrAddr):
+         if iterWlt.akpChildByScrAddr.get(scrAddr):
             return iterID
       return None
 

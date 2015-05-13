@@ -2239,6 +2239,7 @@ def privKey_to_base58(binKey):
       privHashFinal = \
               SecureBinaryData(binary_to_base58(privHashAddr.toBinStr() + \
                                                 privHash256.toBinStr()))
+      LOGERROR("h, 2 = %s, %s" % (privHashAddr.toHexStr(),privHash256.toHexStr()))
       retBase58 = privHashFinal.toBinStr()
    finally:
       privHashAddr.destroy()
