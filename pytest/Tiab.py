@@ -18,7 +18,14 @@ import copy
 import unittest
 from zipfile import ZipFile
 from armoryengine.BDM import TheBDM, BlockDataManager, newTheBDM,\
-   BDM_BLOCKCHAIN_READY, STOPPED_ACTION
+   BDM_BLOCKCHAIN_READY, STOPPED_ACTION, OS_WINDOWS
+
+
+if not OS_WINDOWS:
+   try:
+      subprocess.check_output(['which', 'bitcoind'])
+   except subprocess.CalledProcessError:
+      raise RuntimeError("bitcoind is not in your PATH, cannot run unit-tests")
 
 TOP_TIAB_BLOCK = 247
 
